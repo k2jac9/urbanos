@@ -18,19 +18,42 @@ URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8022/"
 ADDRESS = sys.argv[2] if len(sys.argv) > 2 else "500 BLOOR ST W"
 
 
+def _launch(p):
+    """Prefer the system Chrome (no download); fall back to Playwright's bundled
+    Chromium (e.g. when Chrome is a flatpak/snap that channel='chrome' can't find)."""
+    args = ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader",
+            "--enable-unsafe-swiftshader"]
+    try:
+        return p.chromium.launch(channel="chrome", headless=True, args=args)
+    except Exception:
+        print("system Chrome not launchable — using bundled Chromium "
+              "(run `playwright install chromium` if this fails)")
+        return p.chromium.launch(headless=True, args=args)
+
+
 def main() -> int:
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            channel="chrome",
-            headless=True,
-            args=["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader",
-                  "--enable-unsafe-swiftshader"],
-        )
+        browser = _launch(p)
         page = browser.new_page()
         page.goto(URL, wait_until="load")
 
         # analyze() is a hoisted global; calling it is equivalent to clicking a map pin.
         page.wait_for_function("typeof window.analyze === 'function'", timeout=10000)
+
+        # Race guard: the map's 'load' handler fetches /addresses and OVERWRITES the
+        # detail panel ("N addresses. Click a pin."). If we analyze() before that lands,
+        # the handler wipes our result. Wait for the handler to settle first so this is
+        # robust no matter how fast (or slow) the driving browser renders the map.
+        page.wait_for_function(
+            "() => { const d = document.getElementById('detail');"
+            " return d && /addresses\\. Click a pin|No geocoded addresses/.test(d.innerText); }",
+            timeout=15000,
+        )
+        if "No geocoded addresses" in page.locator("#detail").inner_text():
+            print("RESULT: FAIL (no geocoded addresses loaded — run `make demo` first)")
+            browser.close()
+            return 1
+
         page.evaluate("async (a) => { await window.analyze(a); }", ADDRESS)
         page.wait_for_selector(".verify", timeout=10000)
 

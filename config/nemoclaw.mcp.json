@@ -1,0 +1,15 @@
+{
+  "_comment": "MCP-server config for NemoClaw/OpenClaw (or any MCP-capable runtime). On the GX10, NemoClaw runs Nemotron locally via OpenShell and consumes these tools — that's the 'Best Use of Nemotron/NemoClaw' integration. Point your NemoClaw agent at this file.",
+  "mcpServers": {
+    "toronto-civic": {
+      "command": "python",
+      "args": ["-m", "civic_analyst.mcp_server"],
+      "env": {
+        "PYTHONPATH": "./src",
+        "DATA_DIR": "./data/raw",
+        "LLM_BASE_URL": "http://localhost:11434/v1",
+        "LLM_MODEL": "nemotron-3-nano"
+      }
+    }
+  }
+}

@@ -62,6 +62,22 @@ Then open **http://localhost:8000/** — a Leaflet map with pins colored by risk
 (gpt-oss-120B MoE) handles the heavier `/digest`. Both are MoE / small-active so they
 decode acceptably within the GB10's ~273 GB/s bandwidth.
 
+## Agentic tools over MCP (NemoClaw / OpenClaw)
+The datasets and risk engine are exposed as MCP tools (`list_datasets`,
+`dataset_resources`, `analyze_address`, `top_risk`) so a local agent runtime can
+call them — the pattern the NYC winner used:
+```bash
+python -m civic_analyst.mcp_server      # stdio MCP server
+```
+On the GX10, point **NemoClaw** (running Nemotron locally via OpenShell) at
+`config/nemoclaw.mcp.json` so the agent answers civic-risk questions through our
+tools — the "Best Use of Nemotron/NemoClaw" integration.
+
+## Stretch goal: QLoRA fine-tune (GX10 GPU)
+Messy address matching is our hard problem. `scripts/finetune_address_resolution.py`
+trains a Nemotron-Nano QLoRA adapter (Unsloth/TRL) on `fixtures/address_resolution.sample.jsonl`,
+served back via `vllm serve --enable-lora`. Optional — only if the core demo is solid.
+
 ## Local model (on the GX10)
 The GX10 ships with Ollama + DGX OS (ARM64). Pull a small-active model and serve its
 OpenAI-compatible endpoint:

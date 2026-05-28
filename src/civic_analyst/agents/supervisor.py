@@ -30,11 +30,18 @@ class Supervisor:
         self.compliance = ComplianceAgent()
         self.narrator = narrator or RiskNarratorAgent()
 
-    def analyze(self, address: str) -> RiskReport:
-        findings: list[Finding] = [
+    def _findings(self, address: str) -> list[Finding]:
+        return [
             self.retrieval.run(self.graph, address),
             self.compliance.run(self.graph, address),
         ]
+
+    def score_only(self, address: str) -> float:
+        """Fast risk score with no LLM call — used to color every map pin."""
+        return round(min(1.0, sum(f.score for f in self._findings(address))), 3)
+
+    def analyze(self, address: str) -> RiskReport:
+        findings = self._findings(address)
         risk = round(min(1.0, sum(f.score for f in findings)), 3)
         narrative = self.narrator.run(address, findings)
         return RiskReport(

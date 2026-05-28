@@ -1,5 +1,5 @@
-_id,Establishment Name,Establishment Address,STATUS,Severity
-1,Joe's Diner,100 Queen St W,Fail,Crucial
-2,Joe's Diner,100 Queen St W,Fail,Significant
-3,Bay Bistro,200 Bay St,Pass,Minor
-4,John St Cafe,55 John St,Pass,Minor
+_id,Establishment Name,Establishment Address,STATUS,Severity,Latitude,Longitude
+1,Joe's Diner,100 Queen St W,Fail,Crucial,43.6534,-79.3841
+2,Joe's Diner,100 Queen St W,Fail,Significant,43.6534,-79.3841
+3,Bay Bistro,200 Bay St,Pass,Minor,43.6489,-79.3817
+4,John St Cafe,55 John St,Pass,Minor,43.6457,-79.3897

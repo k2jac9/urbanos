@@ -27,20 +27,46 @@ class CivicGraph:
     def __init__(self) -> None:
         self.g = nx.MultiDiGraph()
 
-    def add_address(self, raw_address: str) -> str:
+    def add_address(
+        self, raw_address: str, lat: float | None = None, lng: float | None = None
+    ) -> str:
         key = normalize_address(raw_address)
         node = f"address:{key}"
         if node not in self.g:
             self.g.add_node(node, kind="address", label=raw_address)
+        if lat is not None and lng is not None:
+            self.g.nodes[node]["lat"] = lat
+            self.g.nodes[node]["lng"] = lng
         return node
 
-    def add_record(self, kind: str, record_id: str, address: str, **attrs: object) -> str:
+    def add_record(
+        self,
+        kind: str,
+        record_id: str,
+        address: str,
+        lat: float | None = None,
+        lng: float | None = None,
+        **attrs: object,
+    ) -> str:
         """Attach a typed record (permit/inspection/request/...) to its address."""
         node = f"{kind}:{record_id}"
         self.g.add_node(node, kind=kind, **attrs)
-        addr_node = self.add_address(address)
+        addr_node = self.add_address(address, lat=lat, lng=lng)
         self.g.add_edge(addr_node, node, kind="has_" + kind)
         return node
+
+    def addresses(self, with_coords: bool = False) -> list[dict]:
+        """All address nodes; optionally only those carrying lat/lng."""
+        out = []
+        for node, data in self.g.nodes(data=True):
+            if data.get("kind") != "address":
+                continue
+            if with_coords and ("lat" not in data or "lng" not in data):
+                continue
+            out.append(
+                {"label": data["label"], "lat": data.get("lat"), "lng": data.get("lng")}
+            )
+        return out
 
     def records_for(self, raw_address: str, kind: str | None = None) -> list[dict]:
         addr_node = f"address:{normalize_address(raw_address)}"

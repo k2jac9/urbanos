@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Toronto Civic Risk Analyst</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #map { height: 100vh; width: 70vw; float: left; }
+    #panel { height: 100vh; width: 30vw; float: right; overflow-y: auto;
+             box-sizing: border-box; padding: 16px; background: #0f172a; color: #e2e8f0; }
+    #panel h1 { font-size: 18px; margin: 0 0 4px; }
+    #panel .hint { color: #94a3b8; font-size: 13px; }
+    #score { font-size: 40px; font-weight: 700; margin: 12px 0 4px; }
+    #findings li { margin: 4px 0; font-size: 13px; }
+    #narrative { white-space: pre-wrap; font-size: 13px; background: #1e293b;
+                 padding: 10px; border-radius: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel">
+    <h1>Toronto Civic Risk Analyst</h1>
+    <div class="hint">100% on-device · click a pin for the agentic risk read</div>
+    <div id="detail"><p class="hint">Loading addresses…</p></div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([43.6510, -79.3845], 14);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+
+    const color = (r) => r >= 0.67 ? '#ef4444' : r >= 0.34 ? '#f59e0b' : '#22c55e';
+
+    async function analyze(address) {
+      const detail = document.getElementById('detail');
+      detail.innerHTML = '<p class="hint">Analyzing ' + address + '…</p>';
+      const r = await fetch('/analyze?address=' + encodeURIComponent(address));
+      const d = await r.json();
+      detail.innerHTML =
+        '<div id="score" style="color:' + color(d.risk_score) + '">' +
+        d.risk_score + '</div><div class="hint">' + d.address + '</div>' +
+        '<ul id="findings">' +
+        d.findings.map(f => '<li><b>' + f.agent + '</b>: ' + f.summary + '</li>').join('') +
+        '</ul><div id="narrative">' + d.narrative + '</div>';
+    }
+
+    fetch('/addresses').then(r => r.json()).then(rows => {
+      if (!rows.length) {
+        document.getElementById('detail').innerHTML =
+          '<p class="hint">No geocoded addresses loaded. Run <code>make demo</code> or download data.</p>';
+        return;
+      }
+      document.getElementById('detail').innerHTML =
+        '<p class="hint">' + rows.length + ' addresses. Click a pin.</p>';
+      rows.forEach(a => {
+        L.circleMarker([a.lat, a.lng], {
+          radius: 10, color: color(a.risk_score), fillColor: color(a.risk_score),
+          fillOpacity: 0.8
+        }).addTo(map).on('click', () => analyze(a.label))
+          .bindTooltip(a.label + ' · ' + a.risk_score);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..graph.builder import CivicGraph
-from .llm import LocalLLM
+from .llm import LocalLLM, interactive_llm
 
 
 @dataclass
@@ -68,7 +68,7 @@ class RiskNarratorAgent:
     )
 
     def __init__(self, llm: LocalLLM | None = None) -> None:
-        self.llm = llm or LocalLLM()
+        self.llm = llm or interactive_llm()
 
     def run(self, address: str, findings: list[Finding]) -> str:
         bullets = "\n".join(f"- [{f.agent}] {f.summary}" for f in findings)

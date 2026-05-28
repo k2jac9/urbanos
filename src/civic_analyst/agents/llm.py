@@ -42,3 +42,13 @@ class LocalLLM:
             )
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
+
+
+def interactive_llm() -> LocalLLM:
+    """Small-active model (Nemotron Nano) for low-latency calls."""
+    return LocalLLM(model=settings.llm_model)
+
+
+def batch_llm() -> LocalLLM:
+    """Larger MoE model (gpt-oss-120B) for heavier batch reasoning, with a longer timeout."""
+    return LocalLLM(model=settings.llm_batch_model, timeout=600.0)

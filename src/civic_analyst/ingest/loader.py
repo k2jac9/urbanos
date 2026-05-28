@@ -66,6 +66,8 @@ def _resolve_plan(columns: list[str], kind: str) -> dict[str, Any]:
         "id_col": id_col,
         "state_attr": state_attr,
         "state_col": _find_col(columns, state_kws),
+        "lat_col": _find_col(columns, ("latitude", "lat")),
+        "lng_col": _find_col(columns, ("longitude", "long", "lng")),
     }
 
 
@@ -106,9 +108,19 @@ def load_file(graph: CivicGraph, key: str, path: Path) -> int:
         attrs: dict[str, Any] = {"dataset": key}
         if plan["state_col"]:
             attrs[plan["state_attr"]] = row.get(plan["state_col"])
-        graph.add_record(kind, record_id, address, **attrs)
+        graph.add_record(kind, record_id, address, lat=_coord(row, plan["lat_col"]),
+                         lng=_coord(row, plan["lng_col"]), **attrs)
         added += 1
     return added
+
+
+def _coord(row: dict[str, Any], col: str | None) -> float | None:
+    if not col:
+        return None
+    try:
+        return float(row[col])
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def load_into_graph(graph: CivicGraph, data_dir: Path | None = None) -> dict[str, int]:

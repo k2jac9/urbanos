@@ -44,12 +44,23 @@ python -m civic_analyst.cli analyze "100 Queen St W"
 ```
 
 ## Instant demo (no downloads)
-Synthetic fixtures live in `fixtures/`, so you can show a populated `/analyze`
-without fetching any real data:
+Synthetic fixtures live in `fixtures/`, so you can show a populated demo without
+fetching any real data:
 ```bash
-make demo        # serves the API against fixtures/ → curl /analyze?address=100 Queen St W (risk 1.0)
+make demo        # serves the API + map against fixtures/
 make demo-cli    # prints a populated report and exits
 ```
+Then open **http://localhost:8000/** — a Leaflet map with pins colored by risk
+(red = high). Click a pin to run the agentic read. Endpoints:
+- `GET /`           map UI
+- `GET /addresses`  geocoded addresses + fast risk score (no LLM) — drives the pins
+- `GET /analyze?address=…`  full agentic read (Nemotron Nano, interactive tier)
+- `GET /digest`     city-wide briefing (gpt-oss-120B MoE, batch tier)
+
+## Two model tiers
+`LLM_MODEL` (Nemotron Nano) handles snappy interactive `/analyze`; `LLM_BATCH_MODEL`
+(gpt-oss-120B MoE) handles the heavier `/digest`. Both are MoE / small-active so they
+decode acceptably within the GB10's ~273 GB/s bandwidth.
 
 ## Local model (on the GX10)
 The GX10 ships with Ollama + DGX OS (ARM64). Pull a small-active model and serve its

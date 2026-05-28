@@ -73,14 +73,15 @@ scripts/build_tiles.sh    # needs the `pmtiles` CLI; pulls only the bbox via ran
 ```
 
 ## Hallucination resistance
-The risk score and findings are computed **without an LLM** — the model only writes the
-narrative. Every generated narrative is then **verified against the findings**
-(`agents/verify.py`): any number it states must trace to the real counts, and any source
-it names must be an actual dataset. If a check fails, we discard the prose and show a
-**deterministic, correct-by-construction summary** instead — so a hallucinated number
-can never reach the user. (Example caught in testing: the model said "9 permits" when the
-data showed 8 → rejected and corrected.) Each `/analyze` response also returns the raw
-`evidence` records behind the claims, so judges can verify. Maps to the Prime Intellect
+The risk score and findings are computed **without an LLM**. The model only proposes
+**per-claim** output — each claim is a JSON object tied to a source-record tag (E1, E2, …).
+Every claim is then **verified** (`agents/verify.py`): each cited tag must be a *real*
+evidence record, and every number must trace to the actual findings. Any claim that
+invents a number or a source ID is rejected and we fall back to **deterministic,
+correct-by-construction claims** — so a hallucinated figure or fabricated source can
+never reach the user. The map panel renders each claim with a **✓ verify** link that
+reveals the exact source record behind it (click-to-verify). Caught in testing: the model
+once claimed "9 permits" when the data showed 8 → rejected. Maps to the Prime Intellect
 "Verifiers" bounty.
 
 ## Two model tiers

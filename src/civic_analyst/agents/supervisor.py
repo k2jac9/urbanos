@@ -10,16 +10,17 @@ from dataclasses import asdict, dataclass
 
 from ..graph.builder import CivicGraph
 from .subagents import ComplianceAgent, Finding, RetrievalAgent, RiskNarratorAgent
-from .verify import evidence_records
+from .verify import evidence_index, narrative_text
 
 
 @dataclass
 class RiskReport:
     address: str
     risk_score: float          # 0..1
-    narrative: str
+    narrative: str             # joined claim text (display / back-compat)
     findings: list[dict]
-    evidence: list[dict]       # the real records behind the claims ("show your work")
+    evidence: list[dict]       # all tagged source records ("show your work")
+    claims: list[dict]         # [{text, source: {tag,dataset,kind,detail}|None}]
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -45,14 +46,16 @@ class Supervisor:
     def analyze(self, address: str) -> RiskReport:
         findings = self._findings(address)
         risk = round(min(1.0, sum(f.score for f in findings)), 3)
-        narrative = self.narrator.run(address, findings)
+        claims = self.narrator.claims(address, findings)
+        tagged, _ = evidence_index(findings)
         return RiskReport(
             address=address,
             risk_score=risk,
-            narrative=narrative,
+            narrative=narrative_text(claims),
             findings=[
                 {"agent": f.agent, "summary": f.summary, "score": f.score}
                 for f in findings
             ],
-            evidence=evidence_records(findings),
+            evidence=tagged,
+            claims=claims,
         )

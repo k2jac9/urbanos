@@ -14,9 +14,10 @@
     #panel h1 { font-size: 18px; margin: 0 0 4px; }
     #panel .hint { color: #94a3b8; font-size: 13px; }
     #score { font-size: 40px; font-weight: 700; margin: 12px 0 4px; }
-    #findings li { margin: 4px 0; font-size: 13px; }
-    #narrative { white-space: pre-wrap; font-size: 13px; background: #1e293b;
-                 padding: 10px; border-radius: 8px; margin-top: 10px; }
+    #findings li, #claims li { margin: 6px 0; font-size: 13px; }
+    .verify { color: #22c55e; cursor: pointer; font-size: 11px; white-space: nowrap; }
+    .srcline { display: none; color: #94a3b8; font-size: 12px; margin: 3px 0 6px 12px;
+               border-left: 2px solid #334155; padding-left: 8px; }
   </style>
 </head>
 <body>
@@ -62,17 +63,25 @@
       const detail = document.getElementById('detail');
       detail.innerHTML = '<p class="hint">Analyzing ' + address + '…</p>';
       const d = await (await fetch('/analyze?address=' + encodeURIComponent(address))).json();
-      const evidence = (d.evidence || [])
-        .map(e => '<li>[' + e.dataset + '] ' + e.kind + (e.detail ? ' — ' + e.detail : '') + '</li>')
-        .join('');
+      const claims = (d.claims || []).map((c, i) => {
+        const s = c.source;
+        const badge = s
+          ? ' <span class="verify" onclick="document.getElementById(\'src' + i + '\').style.display=\'block\'">✓ verify</span>'
+          : '';
+        const src = s
+          ? '<div id="src' + i + '" class="srcline">↳ source ' + s.tag + ': [' + s.dataset + '] '
+            + s.kind + (s.detail ? ' — ' + s.detail : '') + '</div>'
+          : '';
+        return '<li>' + c.text + badge + src + '</li>';
+      }).join('');
       detail.innerHTML =
         '<div id="score" style="color:' + color(d.risk_score) + '">' + d.risk_score + '</div>' +
         '<div class="hint">' + d.address + '</div>' +
         '<ul id="findings">' +
         d.findings.map(f => '<li><b>' + f.agent + '</b>: ' + f.summary + '</li>').join('') +
-        '</ul><div id="narrative">' + d.narrative + '</div>' +
-        '<div class="hint" style="margin-top:10px">Evidence (verifiable source records):</div>' +
-        '<ul id="findings">' + evidence + '</ul>';
+        '</ul>' +
+        '<div class="hint" style="margin-top:10px">Assessment (click ✓ to verify each claim against its source record):</div>' +
+        '<ul id="claims">' + claims + '</ul>';
     }
 
     map.on('load', async () => {

@@ -13,8 +13,8 @@ class _StubNarrator(RiskNarratorAgent):
     def __init__(self):
         pass
 
-    def run(self, address, findings):
-        return "stub"
+    def claims(self, address, findings):
+        return [{"text": "stub", "source": None}]
 
 
 def test_fixtures_load_across_all_datasets():

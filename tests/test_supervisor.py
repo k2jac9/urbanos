@@ -9,8 +9,8 @@ class _StubNarrator(RiskNarratorAgent):
     def __init__(self):
         pass
 
-    def run(self, address, findings):
-        return f"stub narrative for {address} ({len(findings)} findings)"
+    def claims(self, address, findings):
+        return [{"text": f"stub narrative for {address} ({len(findings)} findings)", "source": None}]
 
 
 def test_supervisor_scores_open_permit_and_infraction():

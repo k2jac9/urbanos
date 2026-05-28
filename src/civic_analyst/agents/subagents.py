@@ -7,10 +7,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import json
+
 from ..graph.builder import CivicGraph
-from ..ingest.datasets import REGISTRY
 from .llm import LocalLLM, interactive_llm
-from .verify import deterministic_summary, verify_narrative
+from .verify import (
+    deterministic_claims,
+    evidence_index,
+    narrative_text,
+    resolve_claims,
+    verify_claims,
+)
 
 
 @dataclass
@@ -64,57 +71,48 @@ class RiskNarratorAgent:
 
     name = "risk_narrator"
     SYSTEM = (
-        "You are a municipal risk analyst. Using ONLY the datasets named in the "
-        "Evidence below, write a 3-sentence risk assessment and one concrete "
-        "recommended action for an inspector. Cite the exact dataset name from the "
-        "Evidence behind each claim. Use only numbers that appear in the Evidence or "
-        "Findings; if a figure is not given, do not state one. Never invent dataset "
-        "names, records, or statistics. End with a line: 'Sources: <comma-separated "
-        "dataset names from the Evidence>'."
+        "You are a municipal risk analyst. You are given Evidence items, each with a "
+        "tag (E1, E2, …), and deterministic Findings. Output ONLY a JSON array of 2-4 "
+        "objects, each exactly {\"claim\": \"<one sentence>\", \"source\": \"<one "
+        "evidence tag, e.g. E1>\"}. Every claim must be supported by the cited "
+        "evidence item. Use only numbers that appear in the Findings; never invent "
+        "numbers, sources, or tags. Output the JSON array and nothing else."
     )
 
     def __init__(self, llm: LocalLLM | None = None) -> None:
         self.llm = llm or interactive_llm()
 
-    def _grounding(self, findings: list[Finding]) -> tuple[str, str]:
-        """Build (datasets-consulted, evidence-lines) from the actual records."""
-        seen: set = set()
-        names: list[str] = []
-        lines: list[str] = []
-        for f in findings:
-            for rec in f.evidence:
-                rid = rec.get("id")
-                if rid in seen:
-                    continue
-                seen.add(rid)
-                key = rec.get("dataset")
-                name = REGISTRY[key].title if key in REGISTRY else (key or "unknown")
-                if name not in names:
-                    names.append(name)
-                state = rec.get("outcome") or rec.get("status") or ""
-                kind = rec.get("kind", "record")
-                lines.append(f"- [{name}] {kind}{f': {state}' if state else ''}")
-                if len(lines) >= 12:
-                    break
-            if len(lines) >= 12:
-                break
-        return ", ".join(names) or "none", "\n".join(lines) or "(no records)"
+    @staticmethod
+    def _parse_json_array(raw: str) -> list:
+        """Extract the first JSON array from the model output; raise on failure."""
+        start, end = raw.find("["), raw.rfind("]")
+        if start == -1 or end <= start:
+            raise ValueError("no JSON array in output")
+        parsed = json.loads(raw[start : end + 1])
+        if not isinstance(parsed, list):
+            raise ValueError("not a JSON array")
+        return parsed
+
+    def claims(self, address: str, findings: list[Finding]) -> list[dict]:
+        """Verified, per-claim assessment. Each claim is tied to a real source
+        record; any claim with an invented number or unknown source tag causes a
+        fall back to deterministic claims (so output is always source-backed)."""
+        tagged, tag_map = evidence_index(findings)
+        valid_tags = {t["tag"] for t in tagged}
+        ev = "\n".join(
+            f"{t['tag']} [{t['dataset']}] {t['kind']}" + (f": {t['detail']}" if t["detail"] else "")
+            for t in tagged
+        ) or "(no records)"
+        bullets = "\n".join(f"- {f.summary}" for f in findings)
+        user = f"Address: {address}\nEvidence:\n{ev}\nFindings:\n{bullets}"
+        try:
+            parsed = self._parse_json_array(self.llm.chat(self.SYSTEM, user, temperature=0.0))
+        except Exception:  # offline / malformed output
+            parsed = None
+        if parsed is None or verify_claims(parsed, address, findings, valid_tags):
+            parsed = deterministic_claims(address, findings, tagged)
+        return resolve_claims(parsed, tag_map)
 
     def run(self, address: str, findings: list[Finding]) -> str:
-        bullets = "\n".join(f"- [{f.agent}] {f.summary}" for f in findings)
-        consulted, evidence = self._grounding(findings)
-        user = (
-            f"Address: {address}\n"
-            f"Datasets consulted: {consulted}\n"
-            f"Evidence (cite ONLY these datasets):\n{evidence}\n"
-            f"Findings:\n{bullets}"
-        )
-        try:
-            text = self.llm.chat(self.SYSTEM, user, temperature=0.0)
-        except Exception:  # offline / no model
-            return deterministic_summary(address, findings)
-        # Trust but verify: a narrative that cites unknown sources or invents numbers
-        # is discarded in favor of the correct-by-construction summary.
-        if verify_narrative(text, address, findings):
-            return deterministic_summary(address, findings)
-        return text
+        """Joined narrative text (CLI / back-compat)."""
+        return narrative_text(self.claims(address, findings))

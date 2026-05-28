@@ -1,0 +1,19 @@
+# Ruflo / claude-flow local tooling state (machine-local, not for the repo)
+.swarm/
+.claude-flow/
+agentdb.rvf
+agentdb.rvf.lock
+*.rvf
+*.rvf.lock
+ruvector.db
+*.db
+
+# Secrets / env
+.env
+.env.*
+*.key
+*.pem
+
+# OS / editor
+.DS_Store
+*.swp

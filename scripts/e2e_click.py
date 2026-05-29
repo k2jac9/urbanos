@@ -40,12 +40,13 @@ def main() -> int:
         # analyze() is a hoisted global; calling it is equivalent to clicking a map pin.
         page.wait_for_function("typeof window.analyze === 'function'", timeout=10000)
 
-        # Race guard: the map's 'load' handler fetches /addresses and fills the status
-        # line. Wait for it to settle before analyze() so this is robust no matter how
-        # fast (or slow) the driving browser renders the map.
+        # Race guard: the map's 'load' handler is the LAST thing to fill the status line
+        # ("… Click a pin or pick one below."). Match that final phrase — NOT a bare
+        # "addresses", which also matches the initial "Loading addresses…" and would let
+        # analyze() run before the map load handler resets the panel.
         page.wait_for_function(
             "() => { const s = document.getElementById('status');"
-            " return s && /addresses|No geocoded addresses/.test(s.innerText); }",
+            " return s && /Click a pin|No geocoded addresses/.test(s.innerText); }",
             timeout=15000,
         )
         if "No geocoded addresses" in page.locator("#status").inner_text():

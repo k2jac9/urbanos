@@ -7,52 +7,76 @@
   <link rel="icon" href="/favicon.ico" />
   <link rel="stylesheet" href="/static/vendor/maplibre-gl.css" />
   <style>
-    body { margin: 0; font-family: system-ui, sans-serif; }
+    body { margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
     /* Fully offline: vector basemap from a self-hosted PMTiles file (no tile servers). */
     #map { position: absolute; top: 0; bottom: 0; left: 0; width: 70vw; background: #0b1220; }
-    #panel { position: absolute; top: 0; bottom: 0; right: 0; width: 30vw; overflow-y: auto;
-             box-sizing: border-box; padding: 16px; background: #0f172a; color: #e2e8f0; }
+    #panel { position: absolute; top: 0; bottom: 0; right: 0; width: 30vw; min-width: 320px;
+             overflow-y: auto; box-sizing: border-box; padding: 16px; background: #0f172a;
+             color: #e2e8f0; }
     #panel h1 { font-size: 18px; margin: 0 0 4px; }
-    #panel h2 { font-size: 14px; margin: 16px 0 6px; color: #cbd5e1; }
+    #panel h2 { font-size: 13px; margin: 16px 0 6px; color: #94a3b8; font-weight: 600;
+                text-transform: uppercase; letter-spacing: .05em; }
+    #addr-h { font-size: 22px; margin: 2px 0 0; color: #f1f5f9; }   /* address = the headline */
     .hint { color: #94a3b8; font-size: 13px; }
-    #score { font-size: 40px; font-weight: 700; margin: 12px 0 0; }
-    .band { font-size: 13px; font-weight: 600; letter-spacing: .04em; }
-    #findings li, #claims li { margin: 6px 0; font-size: 13px; }
+    .scorewrap { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 0; }
+    #score { font-size: 44px; font-weight: 700; line-height: 1; }
+    #score .scale { font-size: 16px; font-weight: 600; color: #64748b; }
+    .scorecap { font-size: 12px; color: #94a3b8; }
+    .band { font-size: 13px; font-weight: 700; letter-spacing: .04em; margin-top: 2px; }
+    #claims li { margin: 6px 0; font-size: 13px; }
+    .agentcap { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .back { background: none; border: 1px solid #334155; color: #cbd5e1; border-radius: 6px;
+            padding: 3px 8px; font-size: 12px; cursor: pointer; margin-bottom: 8px; }
+    /* Legend — explains the shape + color encoding once. */
+    #legend { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0;
+              padding: 0; font-size: 12px; }
+    #legend li { white-space: nowrap; }
     /* Accessible address list — keyboard/screen-reader entry point alongside the pins. */
-    #addrnav { max-height: 40vh; overflow-y: auto; }
+    #addrnav { max-height: 38vh; overflow-y: auto; }
     #addrlist { list-style: none; margin: 0; padding: 0; }
     #addrlist button { display: flex; gap: 8px; align-items: baseline; width: 100%;
       text-align: left; background: #111c33; color: #e2e8f0; border: 1px solid #1e293b;
       border-radius: 6px; padding: 6px 8px; margin: 3px 0; font-size: 13px; cursor: pointer; }
-    #addrlist button:hover, #addrlist button:focus { border-color: #64748b; outline: none;
-      box-shadow: 0 0 0 2px #38bdf8; }
-    #addrlist button[aria-current="true"] { border-color: #38bdf8; }
+    #addrlist button:hover { border-color: #64748b; }
+    #addrlist button[aria-current="true"] { border-color: #38bdf8; background: #14233f; }
     .sym { font-size: 13px; }
     .bandlbl { font-weight: 700; font-size: 11px; min-width: 34px; }
-    .band-high  .sym, .band-high  .bandlbl, .b-high  { color: #ef4444; }
-    .band-medium .sym, .band-medium .bandlbl, .b-medium { color: #f59e0b; }
-    .band-low   .sym, .band-low   .bandlbl, .b-low   { color: #eab308; }
-    .band-none  .sym, .band-none  .bandlbl, .b-none  { color: #22c55e; }
-    .verify { color: #22c55e; cursor: pointer; font-size: 11px; white-space: nowrap;
+    .band-high  .sym, .band-high  .bandlbl, .b-high  { color: #f87171; }
+    .band-medium .sym, .band-medium .bandlbl, .b-medium { color: #fbbf24; }
+    .band-low   .sym, .band-low   .bandlbl, .b-low   { color: #facc15; }
+    .band-none  .sym, .band-none  .bandlbl, .b-none  { color: #4ade80; }
+    .verify { color: #4ade80; cursor: pointer; font-size: 11px; white-space: nowrap;
       background: none; border: 1px solid #14532d; border-radius: 4px; padding: 1px 6px; }
-    .verify:focus { outline: none; box-shadow: 0 0 0 2px #38bdf8; }
+    .verify[aria-expanded="true"] { background: #14532d; color: #dcfce7; }
     .srcline { color: #94a3b8; font-size: 12px; margin: 3px 0 6px 12px;
                border-left: 2px solid #334155; padding-left: 8px; }
     .nomatch { border: 1px solid #b45309; background: #2a1c08; border-radius: 8px;
                padding: 12px; margin-top: 12px; }
     .nomatch .nm-h { color: #fbbf24; font-weight: 700; margin-bottom: 4px; }
-    /* Responsive: stack the panel under the map on narrow screens (no overflow). */
-    @media (max-width: 760px) {
+    /* Visible, high-contrast focus ring on every interactive element. */
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid #38bdf8; outline-offset: 2px; }
+    .skip { position: absolute; left: -9999px; top: 0; z-index: 5; }
+    .skip:focus { left: 8px; top: 8px; background: #0f172a; color: #e2e8f0; padding: 8px 12px;
+      border: 1px solid #38bdf8; border-radius: 6px; }
+    /* Responsive: below tablet width, stack the panel under the map (no clipping/scroll). */
+    @media (max-width: 900px) {
       #map { position: static; width: 100%; height: 44vh; }
-      #panel { position: static; width: 100%; height: auto; }
+      #panel { position: static; width: 100%; min-width: 0; height: auto; }
+      #addrnav { max-height: none; }
     }
   </style>
 </head>
 <body>
+  <a href="#panel" class="skip">Skip to analysis</a>
   <div id="map"></div>
-  <div id="panel" role="complementary">
+  <div id="panel" role="complementary" aria-label="Risk analysis" tabindex="-1">
     <h1>Toronto Civic Risk Analyst</h1>
     <p class="hint">100% on-device · offline vector map · pick an address or a map pin</p>
+    <ul id="legend" aria-label="Risk legend">
+      <li class="b-high">▲ High</li><li class="b-medium">◆ Medium</li>
+      <li class="b-low">● Low</li><li class="b-none">· OK</li>
+    </ul>
     <div id="status" class="hint" role="status" aria-live="polite">Loading addresses…</div>
     <div id="detail" aria-live="polite"></div>
     <h2 id="addrhead" hidden>Browse addresses by risk</h2>
@@ -61,7 +85,6 @@
   <script src="/static/vendor/maplibre-gl.js"></script>
   <script src="/static/vendor/pmtiles.js"></script>
   <script>
-    // Register the pmtiles:// protocol so MapLibre reads our self-hosted vector file.
     const protocol = new pmtiles.Protocol();
     maplibregl.addProtocol('pmtiles', protocol.tile);
     const PMTILES = `pmtiles://${location.origin}/static/toronto.pmtiles`;
@@ -76,9 +99,8 @@
       none:   { sym: '·', label: 'OK' },
     };
     const bandOf = (r) => r >= 0.67 ? 'high' : r >= 0.34 ? 'medium' : r > 0 ? 'low' : 'none';
-    const color = (r) => ({ high: '#ef4444', medium: '#f59e0b', low: '#eab308', none: '#22c55e' })[bandOf(r)];
+    let ADDR_ROWS = [];
 
-    // Label-less dark basemap → no font glyphs/sprites needed, so it works fully offline.
     const map = new maplibregl.Map({
       container: 'map',
       center: [-79.3845, 43.6510],
@@ -100,7 +122,18 @@
       }
     });
     map.addControl(new maplibregl.NavigationControl());
-    addEventListener('resize', () => map.resize());  // keep canvas correct when layout stacks
+    addEventListener('resize', () => map.resize());
+
+    const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+
+    function setSelected(label) {
+      const row = ADDR_ROWS.find((a) => a.label === label);
+      const data = row
+        ? { type: 'FeatureCollection', features: [{ type: 'Feature',
+            geometry: { type: 'Point', coordinates: [row.lng, row.lat] }, properties: {} }] }
+        : { type: 'FeatureCollection', features: [] };
+      if (map.getSource('selected')) map.getSource('selected').setData(data);
+    }
 
     function srcText(s) {
       const bits = [`source ${esc(s.tag)}`, `[${esc(s.dataset)}]`, esc(s.kind)];
@@ -110,16 +143,25 @@
       return '↳ ' + bits.join(' ');
     }
 
+    function resetOverview() {
+      document.getElementById('detail').innerHTML =
+        '<p class="hint">Select a pin or an address to see its risk read.</p>';
+      document.querySelectorAll('#addrlist button').forEach((b) => b.removeAttribute('aria-current'));
+      setSelected(null);
+    }
+
     async function analyze(address) {
       const detail = document.getElementById('detail');
       detail.innerHTML = '<p class="hint">Analyzing ' + esc(address) + '…</p>';
       const d = await (await fetch('/analyze?address=' + encodeURIComponent(address))).json();
       document.querySelectorAll('#addrlist button').forEach((b) =>
         b.setAttribute('aria-current', String(b.dataset.label === address)));
+      setSelected(address);
 
       // Not-found is NOT an all-clear: show a distinct state, never a 0 score (#2).
       if (!d.found) {
         detail.innerHTML =
+          '<button class="back" type="button" onclick="resetOverview()">← Overview</button>' +
           '<div class="nomatch" role="alert"><div class="nm-h">⚠ No match</div>' +
           '<p class="hint">“' + esc(d.address) + '” was not found in the fused datasets ' +
           '(Building Permits, DineSafe, Business Licences). This is <b>not</b> an all-clear — ' +
@@ -142,20 +184,25 @@
       const evNote = total > shown
         ? 'Showing ' + shown + ' of ' + total + ' linked source records.'   // no silent cap (#3)
         : total + ' linked source record' + (total === 1 ? '' : 's') + '.';
+      const agents = (d.findings || []).map((f) => esc(f.agent)).join(' + ');
 
       detail.innerHTML =
-        '<div id="score" class="b-' + d.risk_band + '">' + d.risk_score + '</div>' +
-        '<div class="band b-' + d.risk_band + '">' + band.sym + ' ' + band.label + ' RISK</div>' +
-        '<div class="hint">' + esc(d.matched_address || d.address) + '</div>' +
-        '<h2>Findings</h2><ul id="findings">' +
-        d.findings.map((f) => '<li><b>' + esc(f.agent) + '</b>: ' + esc(f.summary) + '</li>').join('') +
-        '</ul>' +
-        '<h2>Assessment <span class="hint">(verify each claim against its source)</span></h2>' +
+        '<button class="back" type="button" onclick="resetOverview()">← Overview</button>' +
+        '<h2 id="addr-label" hidden>Address</h2>' +
+        '<div id="addr-h">' + esc(d.matched_address || d.address) + '</div>' +
+        '<div class="scorewrap"><div id="score" class="b-' + d.risk_band +
+        '" role="img" aria-label="Risk score ' + d.risk_score + ' out of 1, ' + band.label +
+        '">' + d.risk_score + '<span class="scale"> / 1</span></div>' +
+        '<div><div class="band b-' + d.risk_band + '">' + band.sym + ' ' + band.label +
+        ' RISK</div><div class="scorecap">Risk score (0–1)</div></div></div>' +
+        '<h2>Assessment <span class="hint" style="text-transform:none;letter-spacing:0">' +
+        '(verify each claim against its source)</span></h2>' +
         '<ul id="claims">' + claims + '</ul>' +
-        '<p class="hint">' + evNote + '</p>';
+        '<p class="hint">' + evNote + '</p>' +
+        '<p class="agentcap">Analyzed by ' + agents + ' sub-agents · deterministic score</p>';
     }
 
-    // Toggle (not one-way reveal) the source line, with correct ARIA state (#9).
+    // Toggle (not one-way reveal) the source line, with label + ARIA state (#9, #10).
     document.getElementById('detail').addEventListener('click', (e) => {
       const btn = e.target.closest('.verify');
       if (!btn) return;
@@ -163,7 +210,9 @@
       const open = row.hasAttribute('hidden');
       row.toggleAttribute('hidden', !open);
       btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? '✕ hide' : '✓ verify';
     });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') resetOverview(); });
 
     function renderAddressList(rows) {
       document.getElementById('addrhead').hidden = false;
@@ -171,7 +220,7 @@
       ul.innerHTML = rows.slice().sort((a, b) => b.risk_score - a.risk_score).map((a) => {
         const k = bandOf(a.risk_score), b = BANDS[k];
         return '<li><button type="button" class="addr band-' + k + '" data-label="' + esc(a.label) +
-          '" aria-label="' + esc(a.label) + ', ' + b.label + ' risk">' +
+          '" aria-label="' + esc(a.label) + ', ' + b.label + ' risk, score ' + a.risk_score + '">' +
           '<span class="sym" aria-hidden="true">' + b.sym + '</span>' +
           '<span class="bandlbl">' + b.label + '</span>' +
           '<span class="lbl">' + esc(a.label) + '</span></button></li>';
@@ -184,12 +233,13 @@
 
     map.on('load', async () => {
       const rows = await (await fetch('/addresses')).json();
+      ADDR_ROWS = rows;
       const status = document.getElementById('status');
       if (!rows.length) {
         status.textContent = 'No geocoded addresses loaded. Run `make demo`.';
         return;
       }
-      status.textContent = rows.length + ' addresses. Click a pin or pick one below.';
+      resetOverview();
       renderAddressList(rows);
       map.addSource('risk', {
         type: 'geojson',
@@ -210,9 +260,27 @@
           'circle-stroke-width': 2, 'circle-stroke-color': '#0b1220'
         }
       });
+      // Selected-pin halo so the panel and map stay visually linked.
+      map.addSource('selected', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'risk-selected', source: 'selected', type: 'circle',
+        paint: { 'circle-radius': 14, 'circle-color': 'rgba(56,189,248,0)',
+                 'circle-stroke-width': 3, 'circle-stroke-color': '#38bdf8' }
+      });
       map.on('click', 'risk-pins', (e) => analyze(e.features[0].properties.label));
-      map.on('mouseenter', 'risk-pins', () => map.getCanvas().style.cursor = 'pointer');
-      map.on('mouseleave', 'risk-pins', () => map.getCanvas().style.cursor = '');
+      map.on('mouseenter', 'risk-pins', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const p = e.features[0].properties, k = bandOf(p.risk), b = BANDS[k];
+        hoverPopup.setLngLat(e.lngLat)
+          .setHTML('<b>' + esc(p.label) + '</b><br><span class="b-' + k + '">' + b.sym + ' ' +
+                   b.label + ' · ' + p.risk + '</span>').addTo(map);
+      });
+      map.on('mouseleave', 'risk-pins', () => {
+        map.getCanvas().style.cursor = ''; hoverPopup.remove();
+      });
+      // Set status LAST: it's the single "fully ready" signal (nothing rewrites
+      // #detail after this, so an immediate analyze() can't be clobbered).
+      status.textContent = rows.length + ' addresses. Click a pin or pick one below.';
     });
   </script>
 </body>

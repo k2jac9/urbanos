@@ -1,5 +1,6 @@
 # Ruflo / claude-flow local tooling (machine-local, regenerate with `ruflo init`)
 .claude/
+.mcp.json
 .swarm/
 .claude-flow/
 agentdb.rvf

@@ -22,7 +22,7 @@ FINDINGS = [
     ),
     Finding("compliance", "1 open permit(s), 1 infraction(s).", [], 0.5),
 ]
-TAGGED, TAG_MAP = evidence_index(FINDINGS)
+TAGGED, TAG_MAP, ID_TO_TAG = evidence_index(FINDINGS)
 VALID = {t["tag"] for t in TAGGED}
 
 CLEAN = [
@@ -81,10 +81,37 @@ def test_narrator_keeps_clean_claims():
 def test_narrator_falls_back_on_hallucination():
     lie = json.dumps([{"claim": "There are 42 infractions.", "source": "E9"}])
     out = RiskNarratorAgent(llm=_StubLLM(lie)).claims(ADDRESS, FINDINGS)
-    assert out == resolve_claims(deterministic_claims(ADDRESS, FINDINGS, TAGGED), TAG_MAP)
+    assert out == resolve_claims(
+        deterministic_claims(ADDRESS, FINDINGS, TAGGED, ID_TO_TAG), TAG_MAP
+    )
     assert all("42" not in c["text"] for c in out)
 
 
 def test_narrator_falls_back_on_malformed_json():
     out = RiskNarratorAgent(llm=_StubLLM("sorry, here is the answer")).claims(ADDRESS, FINDINGS)
-    assert out == resolve_claims(deterministic_claims(ADDRESS, FINDINGS, TAGGED), TAG_MAP)
+    assert out == resolve_claims(
+        deterministic_claims(ADDRESS, FINDINGS, TAGGED, ID_TO_TAG), TAG_MAP
+    )
+
+
+def test_deterministic_claims_link_to_distinct_sources():
+    # Topic claims cite the kind of record that backs them — not all E1 (#4).
+    claims = deterministic_claims(ADDRESS, FINDINGS, TAGGED, ID_TO_TAG)
+    by_text = {c["claim"]: c["source"] for c in claims}
+    permit_src = next(s for t, s in by_text.items() if "permit" in t)
+    insp_src = next(s for t, s in by_text.items() if "inspection" in t)
+    assert permit_src != insp_src                 # genuinely distinct citations
+    assert TAG_MAP[permit_src]["kind"] == "permit"
+    assert TAG_MAP[insp_src]["kind"] == "inspection"
+    # Evidence is traceable: a real record id is exposed for display (#5).
+    resolved = resolve_claims(claims, TAG_MAP)
+    assert resolved[0]["source"]["ref"] == "i1"
+
+
+def test_recommendation_is_conditional_on_risk():
+    # No issues -> explicit "no action", with no fabricated source (#7).
+    clean = [Finding("retrieval", "0 linked records.", [], 0.0),
+             Finding("compliance", "0 open permit(s); 0 adverse inspection(s).", [], 0.0)]
+    tagged, _, id_map = evidence_index(clean)
+    rec = deterministic_claims("nowhere", clean, tagged, id_map)[-1]
+    assert "no action required" in rec["claim"].lower() and rec["source"] is None

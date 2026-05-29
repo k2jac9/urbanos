@@ -16,31 +16,75 @@ import re
 
 from ..ingest.datasets import REGISTRY
 
+EVIDENCE_CAP = 12  # max evidence rows surfaced per analysis (disclosed, never silent)
 
-def evidence_index(findings, cap: int = 12) -> tuple[list[dict], dict[str, dict]]:
-    """Tag each real record E1, E2, … → (tagged list, {tag: record}). The tags are
-    the only valid `source` IDs a claim may cite."""
-    seen: set = set()
-    tagged: list[dict] = []
-    tag_map: dict[str, dict] = {}
+
+def classify_inspection(outcome) -> str:
+    """A DineSafe outcome's severity: 'pass' | 'minor' (conditional) | 'severe'."""
+    o = str(outcome or "").strip().lower()
+    if not o or o == "pass":
+        return "pass"
+    if o.startswith("conditional"):
+        return "minor"
+    return "severe"  # Closed, Fail, Suspended, …
+
+
+def risk_band(score: float) -> str:
+    """Non-color risk label (mirrors the map's color thresholds)."""
+    if score <= 0:
+        return "none"
+    if score < 0.34:
+        return "low"
+    if score < 0.67:
+        return "medium"
+    return "high"
+
+
+def _ref(rec: dict) -> str:
+    """Human-facing source-record id (strip the 'kind:' node prefix)."""
+    return str(rec.get("id") or "").split(":", 1)[-1]
+
+
+def unique_records(findings) -> dict[str, dict]:
+    """All distinct records across findings, keyed by their (node) id."""
+    out: dict[str, dict] = {}
     for f in findings:
         for rec in f.evidence:
             rid = rec.get("id")
-            if rid in seen:
-                continue
-            seen.add(rid)
-            key = rec.get("dataset")
-            entry = {
-                "tag": f"E{len(tagged) + 1}",
-                "dataset": REGISTRY[key].title if key in REGISTRY else (key or "?"),
-                "kind": rec.get("kind", "record"),
-                "detail": rec.get("outcome") or rec.get("status") or "",
-            }
-            tagged.append(entry)
-            tag_map[entry["tag"]] = entry
-            if len(tagged) >= cap:
-                return tagged, tag_map
-    return tagged, tag_map
+            if rid is not None and rid not in out:
+                out[rid] = rec
+    return out
+
+
+def evidence_total(findings) -> int:
+    return len(unique_records(findings))
+
+
+def evidence_index(
+    findings, cap: int = EVIDENCE_CAP
+) -> tuple[list[dict], dict[str, dict], dict[str, str]]:
+    """Tag each distinct record E1, E2, … → (tagged list capped at `cap`,
+    {tag: entry}, {node_id: tag}). The tags are the only valid `source` IDs a
+    claim may cite; the node_id map lets a claim cite the specific row it used."""
+    tagged: list[dict] = []
+    tag_map: dict[str, dict] = {}
+    id_to_tag: dict[str, str] = {}
+    for rid, rec in unique_records(findings).items():
+        if len(tagged) >= cap:
+            break
+        key = rec.get("dataset")
+        entry = {
+            "tag": f"E{len(tagged) + 1}",
+            "dataset": REGISTRY[key].title if key in REGISTRY else (key or "?"),
+            "kind": rec.get("kind", "record"),
+            "detail": rec.get("outcome") or rec.get("status") or "",
+            "ref": _ref(rec),
+            "date": str(rec.get("date") or ""),
+        }
+        tagged.append(entry)
+        tag_map[entry["tag"]] = entry
+        id_to_tag[rid] = entry["tag"]
+    return tagged, tag_map, id_to_tag
 
 
 def _ints(s: str) -> set[int]:
@@ -86,15 +130,54 @@ def verify_claims(claims, address: str, findings, valid_tags: set[str]) -> list[
     return issues
 
 
-def deterministic_claims(address: str, findings, tagged: list[dict]) -> list[dict]:
-    """Correct-by-construction claims (no LLM): finding summaries, each tied to a
-    real evidence tag when one exists."""
-    first = tagged[0]["tag"] if tagged else None
-    claims = [{"claim": f.summary, "source": first} for f in findings]
-    claims.append(
-        {"claim": "Recommended action: schedule an on-site inspection to verify compliance.",
-         "source": None}
-    )
+def _first_tag(evidence: list[dict], id_to_tag: dict[str, str]) -> str | None:
+    for rec in evidence:
+        tag = id_to_tag.get(rec.get("id"))
+        if tag:
+            return tag
+    return None
+
+
+def _recommendation(findings, id_to_tag: dict[str, str]) -> dict:
+    """Conditional next-step, tied to the evidence that motivates it (not a constant)."""
+    recs = unique_records(findings).values()
+    open_permits = [r for r in recs
+                    if r.get("kind") == "permit" and str(r.get("status", "")).lower() != "closed"]
+    adverse = [r for r in recs
+               if r.get("kind") == "inspection" and classify_inspection(r.get("outcome")) != "pass"]
+    severe = [r for r in adverse if classify_inspection(r.get("outcome")) == "severe"]
+    if severe:
+        return {"claim": "Recommended action: an adverse food-safety inspection is on record"
+                " — prioritize an on-site re-inspection.",
+                "source": id_to_tag.get(severe[0].get("id"))}
+    if open_permits or adverse:
+        return {"claim": "Recommended action: schedule an on-site inspection to verify"
+                " compliance.",
+                "source": _first_tag(open_permits + adverse, id_to_tag)}
+    return {"claim": "No open permits or adverse inspections on record — no action required.",
+            "source": None}
+
+
+def deterministic_claims(address: str, findings, tagged: list[dict],
+                         id_to_tag: dict[str, str]) -> list[dict]:
+    """Correct-by-construction claims (no LLM). Each claim is topic-specific and cites
+    the kind of record that substantiates it — a permit claim points at a permit row, an
+    inspection claim at an inspection row — so claims aren't all collapsed onto E1 (#4)."""
+    recs = unique_records(findings)
+    open_permits = [r for r in recs.values()
+                    if r.get("kind") == "permit" and str(r.get("status", "")).lower() != "closed"]
+    adverse = [r for r in recs.values()
+               if r.get("kind") == "inspection" and classify_inspection(r.get("outcome")) != "pass"]
+
+    claims = [{"claim": f"{len(recs)} linked record(s) for {address!r}.",
+               "source": next(iter(id_to_tag.values()), None)}]
+    if open_permits:
+        claims.append({"claim": f"{len(open_permits)} open building permit(s).",
+                       "source": id_to_tag.get(open_permits[0].get("id"))})
+    if adverse:
+        claims.append({"claim": f"{len(adverse)} adverse food-safety inspection(s).",
+                       "source": id_to_tag.get(adverse[0].get("id"))})
+    claims.append(_recommendation(findings, id_to_tag))
     return claims
 
 

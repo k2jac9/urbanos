@@ -77,6 +77,16 @@ class CivicGraph:
             )
         return out
 
+    def has_address(self, raw_address: str) -> bool:
+        """Whether this address resolves to a known node (distinguishes a real
+        low-risk address from a not-found / mistyped query)."""
+        return f"address:{normalize_address(raw_address)}" in self.g
+
+    def matched_label(self, raw_address: str) -> str | None:
+        """The canonical stored label for a query (so the UI can echo what matched)."""
+        node = f"address:{normalize_address(raw_address)}"
+        return self.g.nodes[node].get("label") if node in self.g else None
+
     def records_for(self, raw_address: str, kind: str | None = None) -> list[dict]:
         addr_node = f"address:{normalize_address(raw_address)}"
         if addr_node not in self.g:

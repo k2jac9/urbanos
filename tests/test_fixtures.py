@@ -31,7 +31,9 @@ def test_demo_address_is_high_risk_and_clean_address_is_low():
     hot = sup.analyze("100 Queen St W")   # 2 open permits + 2 failed inspections
     cold = sup.analyze("55 John St")      # closed permit + passing inspection
 
-    assert hot.risk_score == 1.0
-    assert cold.risk_score == 0.0
+    # Graded score (#6): 2 open (0.5) + 2 severe (2.0) -> 1-exp(-0.35*5) = 0.826, "high".
+    assert hot.risk_score == 0.826 and hot.risk_band == "high"
+    assert cold.risk_score == 0.0 and cold.risk_band == "none"
+    assert hot.found and hot.matched_address
     # 2 permits + 2 inspections + 1 request + 1 licence all link to the hot address
     assert graph.records_for("100 Queen St W") and len(graph.records_for("100 Queen St W")) == 6

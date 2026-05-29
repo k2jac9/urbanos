@@ -28,11 +28,17 @@ def test_endpoints_with_fixtures():
         labels = {normalize_address(a["label"]) for a in addrs}
         assert labels == {normalize_address(x) for x in ("100 Queen St W", "200 Bay St", "55 John St")}
         assert all(a["lat"] and a["lng"] for a in addrs)
-        assert _score(addrs, "100 Queen St W") == 1.0
+        assert _score(addrs, "100 Queen St W") == 0.826
         assert _score(addrs, "55 John St") == 0.0
 
         analyze = client.get("/analyze", params={"address": "100 Queen St W"}).json()
-        assert analyze["risk_score"] == 1.0
+        assert analyze["risk_score"] == 0.826
+        assert analyze["found"] is True and analyze["risk_band"] == "high"
+
+        # Not-found is distinct from clean (#2): a real query echoes; junk does not.
+        missing = client.get("/analyze", params={"address": "999 Nowhere Rd"}).json()
+        assert missing["found"] is False and missing["matched_address"] is None
+        assert missing["risk_score"] == 0.0
 
         # Map page serves and uses vendored, offline MapLibre + PMTiles (no CDN).
         page = client.get("/").text

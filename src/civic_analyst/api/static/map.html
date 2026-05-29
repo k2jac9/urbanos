@@ -13,20 +13,50 @@
     #panel { position: absolute; top: 0; bottom: 0; right: 0; width: 30vw; overflow-y: auto;
              box-sizing: border-box; padding: 16px; background: #0f172a; color: #e2e8f0; }
     #panel h1 { font-size: 18px; margin: 0 0 4px; }
-    #panel .hint { color: #94a3b8; font-size: 13px; }
-    #score { font-size: 40px; font-weight: 700; margin: 12px 0 4px; }
+    #panel h2 { font-size: 14px; margin: 16px 0 6px; color: #cbd5e1; }
+    .hint { color: #94a3b8; font-size: 13px; }
+    #score { font-size: 40px; font-weight: 700; margin: 12px 0 0; }
+    .band { font-size: 13px; font-weight: 600; letter-spacing: .04em; }
     #findings li, #claims li { margin: 6px 0; font-size: 13px; }
-    .verify { color: #22c55e; cursor: pointer; font-size: 11px; white-space: nowrap; }
-    .srcline { display: none; color: #94a3b8; font-size: 12px; margin: 3px 0 6px 12px;
+    /* Accessible address list — keyboard/screen-reader entry point alongside the pins. */
+    #addrnav { max-height: 40vh; overflow-y: auto; }
+    #addrlist { list-style: none; margin: 0; padding: 0; }
+    #addrlist button { display: flex; gap: 8px; align-items: baseline; width: 100%;
+      text-align: left; background: #111c33; color: #e2e8f0; border: 1px solid #1e293b;
+      border-radius: 6px; padding: 6px 8px; margin: 3px 0; font-size: 13px; cursor: pointer; }
+    #addrlist button:hover, #addrlist button:focus { border-color: #64748b; outline: none;
+      box-shadow: 0 0 0 2px #38bdf8; }
+    #addrlist button[aria-current="true"] { border-color: #38bdf8; }
+    .sym { font-size: 13px; }
+    .bandlbl { font-weight: 700; font-size: 11px; min-width: 34px; }
+    .band-high  .sym, .band-high  .bandlbl, .b-high  { color: #ef4444; }
+    .band-medium .sym, .band-medium .bandlbl, .b-medium { color: #f59e0b; }
+    .band-low   .sym, .band-low   .bandlbl, .b-low   { color: #eab308; }
+    .band-none  .sym, .band-none  .bandlbl, .b-none  { color: #22c55e; }
+    .verify { color: #22c55e; cursor: pointer; font-size: 11px; white-space: nowrap;
+      background: none; border: 1px solid #14532d; border-radius: 4px; padding: 1px 6px; }
+    .verify:focus { outline: none; box-shadow: 0 0 0 2px #38bdf8; }
+    .srcline { color: #94a3b8; font-size: 12px; margin: 3px 0 6px 12px;
                border-left: 2px solid #334155; padding-left: 8px; }
+    .nomatch { border: 1px solid #b45309; background: #2a1c08; border-radius: 8px;
+               padding: 12px; margin-top: 12px; }
+    .nomatch .nm-h { color: #fbbf24; font-weight: 700; margin-bottom: 4px; }
+    /* Responsive: stack the panel under the map on narrow screens (no overflow). */
+    @media (max-width: 760px) {
+      #map { position: static; width: 100%; height: 44vh; }
+      #panel { position: static; width: 100%; height: auto; }
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div id="panel">
+  <div id="panel" role="complementary">
     <h1>Toronto Civic Risk Analyst</h1>
-    <div class="hint">100% on-device · offline vector map · click a pin for the agentic read</div>
-    <div id="detail"><p class="hint">Loading addresses…</p></div>
+    <p class="hint">100% on-device · offline vector map · pick an address or a map pin</p>
+    <div id="status" class="hint" role="status" aria-live="polite">Loading addresses…</div>
+    <div id="detail" aria-live="polite"></div>
+    <h2 id="addrhead" hidden>Browse addresses by risk</h2>
+    <nav id="addrnav" aria-label="Addresses by risk"><ul id="addrlist"></ul></nav>
   </div>
   <script src="/static/vendor/maplibre-gl.js"></script>
   <script src="/static/vendor/pmtiles.js"></script>
@@ -35,7 +65,18 @@
     const protocol = new pmtiles.Protocol();
     maplibregl.addProtocol('pmtiles', protocol.tile);
     const PMTILES = `pmtiles://${location.origin}/static/toronto.pmtiles`;
-    const color = (r) => r >= 0.67 ? '#ef4444' : r >= 0.34 ? '#f59e0b' : '#22c55e';
+
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // Risk band: a non-color cue (shape + word) so risk isn't conveyed by color alone.
+    const BANDS = {
+      high:   { sym: '▲', label: 'HIGH' },
+      medium: { sym: '◆', label: 'MED' },
+      low:    { sym: '●', label: 'LOW' },
+      none:   { sym: '·', label: 'OK' },
+    };
+    const bandOf = (r) => r >= 0.67 ? 'high' : r >= 0.34 ? 'medium' : r > 0 ? 'low' : 'none';
+    const color = (r) => ({ high: '#ef4444', medium: '#f59e0b', low: '#eab308', none: '#22c55e' })[bandOf(r)];
 
     // Label-less dark basemap → no font glyphs/sprites needed, so it works fully offline.
     const map = new maplibregl.Map({
@@ -59,45 +100,102 @@
       }
     });
     map.addControl(new maplibregl.NavigationControl());
+    addEventListener('resize', () => map.resize());  // keep canvas correct when layout stacks
+
+    function srcText(s) {
+      const bits = [`source ${esc(s.tag)}`, `[${esc(s.dataset)}]`, esc(s.kind)];
+      if (s.detail) bits.push('— ' + esc(s.detail));
+      if (s.ref) bits.push('· #' + esc(s.ref));       // real record id — traceable (#5)
+      if (s.date) bits.push('· ' + esc(s.date));
+      return '↳ ' + bits.join(' ');
+    }
 
     async function analyze(address) {
       const detail = document.getElementById('detail');
-      detail.innerHTML = '<p class="hint">Analyzing ' + address + '…</p>';
+      detail.innerHTML = '<p class="hint">Analyzing ' + esc(address) + '…</p>';
       const d = await (await fetch('/analyze?address=' + encodeURIComponent(address))).json();
+      document.querySelectorAll('#addrlist button').forEach((b) =>
+        b.setAttribute('aria-current', String(b.dataset.label === address)));
+
+      // Not-found is NOT an all-clear: show a distinct state, never a 0 score (#2).
+      if (!d.found) {
+        detail.innerHTML =
+          '<div class="nomatch" role="alert"><div class="nm-h">⚠ No match</div>' +
+          '<p class="hint">“' + esc(d.address) + '” was not found in the fused datasets ' +
+          '(Building Permits, DineSafe, Business Licences). This is <b>not</b> an all-clear — ' +
+          'check the spelling/street type or pick an address from the list.</p></div>';
+        return;
+      }
+
+      const band = BANDS[d.risk_band] || BANDS.none;
       const claims = (d.claims || []).map((c, i) => {
         const s = c.source;
-        const badge = s
-          ? ' <span class="verify" onclick="document.getElementById(\'src' + i + '\').style.display=\'block\'">✓ verify</span>'
-          : '';
-        const src = s
-          ? '<div id="src' + i + '" class="srcline">↳ source ' + s.tag + ': [' + s.dataset + '] '
-            + s.kind + (s.detail ? ' — ' + s.detail : '') + '</div>'
-          : '';
-        return '<li>' + c.text + badge + src + '</li>';
+        if (!s) return '<li>' + esc(c.text) + '</li>';
+        const id = 'src' + i;
+        return '<li>' + esc(c.text) +
+          ' <button class="verify" type="button" aria-expanded="false" aria-controls="' + id +
+          '" data-target="' + id + '">✓ verify</button>' +
+          '<div id="' + id + '" class="srcline" hidden>' + srcText(s) + '</div></li>';
       }).join('');
+
+      const shown = (d.evidence || []).length, total = d.evidence_total ?? shown;
+      const evNote = total > shown
+        ? 'Showing ' + shown + ' of ' + total + ' linked source records.'   // no silent cap (#3)
+        : total + ' linked source record' + (total === 1 ? '' : 's') + '.';
+
       detail.innerHTML =
-        '<div id="score" style="color:' + color(d.risk_score) + '">' + d.risk_score + '</div>' +
-        '<div class="hint">' + d.address + '</div>' +
-        '<ul id="findings">' +
-        d.findings.map(f => '<li><b>' + f.agent + '</b>: ' + f.summary + '</li>').join('') +
+        '<div id="score" class="b-' + d.risk_band + '">' + d.risk_score + '</div>' +
+        '<div class="band b-' + d.risk_band + '">' + band.sym + ' ' + band.label + ' RISK</div>' +
+        '<div class="hint">' + esc(d.matched_address || d.address) + '</div>' +
+        '<h2>Findings</h2><ul id="findings">' +
+        d.findings.map((f) => '<li><b>' + esc(f.agent) + '</b>: ' + esc(f.summary) + '</li>').join('') +
         '</ul>' +
-        '<div class="hint" style="margin-top:10px">Assessment (click ✓ to verify each claim against its source record):</div>' +
-        '<ul id="claims">' + claims + '</ul>';
+        '<h2>Assessment <span class="hint">(verify each claim against its source)</span></h2>' +
+        '<ul id="claims">' + claims + '</ul>' +
+        '<p class="hint">' + evNote + '</p>';
+    }
+
+    // Toggle (not one-way reveal) the source line, with correct ARIA state (#9).
+    document.getElementById('detail').addEventListener('click', (e) => {
+      const btn = e.target.closest('.verify');
+      if (!btn) return;
+      const row = document.getElementById(btn.dataset.target);
+      const open = row.hasAttribute('hidden');
+      row.toggleAttribute('hidden', !open);
+      btn.setAttribute('aria-expanded', String(open));
+    });
+
+    function renderAddressList(rows) {
+      document.getElementById('addrhead').hidden = false;
+      const ul = document.getElementById('addrlist');
+      ul.innerHTML = rows.slice().sort((a, b) => b.risk_score - a.risk_score).map((a) => {
+        const k = bandOf(a.risk_score), b = BANDS[k];
+        return '<li><button type="button" class="addr band-' + k + '" data-label="' + esc(a.label) +
+          '" aria-label="' + esc(a.label) + ', ' + b.label + ' risk">' +
+          '<span class="sym" aria-hidden="true">' + b.sym + '</span>' +
+          '<span class="bandlbl">' + b.label + '</span>' +
+          '<span class="lbl">' + esc(a.label) + '</span></button></li>';
+      }).join('');
+      ul.onclick = (e) => {
+        const btn = e.target.closest('button[data-label]');
+        if (btn) analyze(btn.dataset.label);
+      };
     }
 
     map.on('load', async () => {
       const rows = await (await fetch('/addresses')).json();
-      const detail = document.getElementById('detail');
+      const status = document.getElementById('status');
       if (!rows.length) {
-        detail.innerHTML = '<p class="hint">No geocoded addresses loaded. Run <code>make demo</code>.</p>';
+        status.textContent = 'No geocoded addresses loaded. Run `make demo`.';
         return;
       }
-      detail.innerHTML = '<p class="hint">' + rows.length + ' addresses. Click a pin.</p>';
+      status.textContent = rows.length + ' addresses. Click a pin or pick one below.';
+      renderAddressList(rows);
       map.addSource('risk', {
         type: 'geojson',
         data: {
           type: 'FeatureCollection',
-          features: rows.map(a => ({
+          features: rows.map((a) => ({
             type: 'Feature',
             properties: { label: a.label, risk: a.risk_score },
             geometry: { type: 'Point', coordinates: [a.lng, a.lat] }

@@ -40,16 +40,15 @@ def main() -> int:
         # analyze() is a hoisted global; calling it is equivalent to clicking a map pin.
         page.wait_for_function("typeof window.analyze === 'function'", timeout=10000)
 
-        # Race guard: the map's 'load' handler fetches /addresses and OVERWRITES the
-        # detail panel ("N addresses. Click a pin."). If we analyze() before that lands,
-        # the handler wipes our result. Wait for the handler to settle first so this is
-        # robust no matter how fast (or slow) the driving browser renders the map.
+        # Race guard: the map's 'load' handler fetches /addresses and fills the status
+        # line. Wait for it to settle before analyze() so this is robust no matter how
+        # fast (or slow) the driving browser renders the map.
         page.wait_for_function(
-            "() => { const d = document.getElementById('detail');"
-            " return d && /addresses\\. Click a pin|No geocoded addresses/.test(d.innerText); }",
+            "() => { const s = document.getElementById('status');"
+            " return s && /addresses|No geocoded addresses/.test(s.innerText); }",
             timeout=15000,
         )
-        if "No geocoded addresses" in page.locator("#detail").inner_text():
+        if "No geocoded addresses" in page.locator("#status").inner_text():
             print("RESULT: FAIL (no geocoded addresses loaded — run `make demo` first)")
             browser.close()
             return 1

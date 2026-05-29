@@ -22,7 +22,7 @@ cp .env.example .env
 make test          # expect 26 green
 make demo          # offline map at http://localhost:8000/  (DATA_DIR=demo_data)
 ```
-Sanity: open the map → pins render offline → click **500 Bloor St W** → risk 1.0,
+Sanity: open the map → pins render offline → click **500 Bloor St W** → risk ~0.92 ("high"),
 findings, **✓ verify** reveals real source records. (Narratives are deterministic until
 step 2.)
 
@@ -58,7 +58,7 @@ Expect it to call `top_risk` → `analyze_address` and answer with source-backed
 
 ## Demo run-of-show (~60s)
 Open map (offline) → "27 downtown businesses, red = high risk" → click **500 Bloor St W**
-→ risk 1.0, findings → **click ✓ verify** to reveal the source record across DineSafe +
+→ risk ~0.92 ("high"), findings → **click ✓ verify** to reveal the source record across DineSafe +
 Building Permits + licences → close with `/digest` (city-wide briefing) or the NemoClaw
 agent answering a live question.
 

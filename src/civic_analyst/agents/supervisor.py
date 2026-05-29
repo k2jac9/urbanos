@@ -10,17 +10,21 @@ from dataclasses import asdict, dataclass
 
 from ..graph.builder import CivicGraph
 from .subagents import ComplianceAgent, Finding, RetrievalAgent, RiskNarratorAgent
-from .verify import evidence_index, narrative_text
+from .verify import evidence_index, evidence_total, narrative_text, risk_band
 
 
 @dataclass
 class RiskReport:
-    address: str
-    risk_score: float          # 0..1
+    address: str               # the query as asked
+    found: bool                # did the address resolve to a known record? (#2)
+    matched_address: str | None  # canonical label that matched (echo for the analyst)
+    risk_score: float          # 0..1, graded by count + severity (#6)
+    risk_band: str             # none | low | medium | high (non-color cue, #10)
     narrative: str             # joined claim text (display / back-compat)
     findings: list[dict]
-    evidence: list[dict]       # all tagged source records ("show your work")
-    claims: list[dict]         # [{text, source: {tag,dataset,kind,detail}|None}]
+    evidence: list[dict]       # tagged source records, capped (#3); see evidence_total
+    evidence_total: int        # true number of distinct records before the cap (#3)
+    claims: list[dict]         # [{text, source: {tag,dataset,kind,detail,ref,date}|None}]
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -47,15 +51,19 @@ class Supervisor:
         findings = self._findings(address)
         risk = round(min(1.0, sum(f.score for f in findings)), 3)
         claims = self.narrator.claims(address, findings)
-        tagged, _ = evidence_index(findings)
+        tagged, _, _ = evidence_index(findings)
         return RiskReport(
             address=address,
+            found=self.graph.has_address(address),
+            matched_address=self.graph.matched_label(address),
             risk_score=risk,
+            risk_band=risk_band(risk),
             narrative=narrative_text(claims),
             findings=[
                 {"agent": f.agent, "summary": f.summary, "score": f.score}
                 for f in findings
             ],
             evidence=tagged,
+            evidence_total=evidence_total(findings),
             claims=claims,
         )

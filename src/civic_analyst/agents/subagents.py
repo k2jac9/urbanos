@@ -8,16 +8,32 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import json
+import math
 
 from ..graph.builder import CivicGraph
 from .llm import LocalLLM, interactive_llm
 from .verify import (
+    classify_inspection,
     deterministic_claims,
     evidence_index,
     narrative_text,
     resolve_claims,
     verify_claims,
 )
+
+# Severity weights for the graded risk score (#6): an open permit is a mild signal,
+# a conditional-pass inspection moderate, a failed/closed inspection serious. The
+# score is a smooth saturating function of total weight, so 1 vs 12 issues differ.
+_W_OPEN_PERMIT = 0.5
+_W_MINOR_INSPECTION = 0.8
+_W_SEVERE_INSPECTION = 2.0
+_RISK_K = 0.35
+
+
+def graded_score(open_permits: int, minor: int, severe: int) -> float:
+    weight = (_W_OPEN_PERMIT * open_permits + _W_MINOR_INSPECTION * minor
+              + _W_SEVERE_INSPECTION * severe)
+    return round(1.0 - math.exp(-_RISK_K * weight), 3)
 
 
 @dataclass
@@ -44,7 +60,8 @@ class RetrievalAgent:
 
 
 class ComplianceAgent:
-    """Flags open permits and recent inspection infractions."""
+    """Flags open building permits and adverse food-safety inspections — kept as two
+    distinct signals (a DineSafe conditional pass is NOT a permit infraction)."""
 
     name = "compliance"
 
@@ -52,13 +69,15 @@ class ComplianceAgent:
         permits = graph.records_for(address, kind="permit")
         inspections = graph.records_for(address, kind="inspection")
         open_permits = [p for p in permits if str(p.get("status", "")).lower() != "closed"]
-        infractions = [i for i in inspections if i.get("outcome") not in (None, "Pass")]
-        score = min(1.0, 0.2 * len(open_permits) + 0.3 * len(infractions))
+        adverse = [i for i in inspections if classify_inspection(i.get("outcome")) != "pass"]
+        minor = [i for i in adverse if classify_inspection(i.get("outcome")) == "minor"]
+        severe = [i for i in adverse if classify_inspection(i.get("outcome")) == "severe"]
         return Finding(
             agent=self.name,
-            summary=f"{len(open_permits)} open permit(s), {len(infractions)} infraction(s).",
-            evidence=open_permits + infractions,
-            score=score,
+            summary=(f"{len(open_permits)} open permit(s); "
+                     f"{len(adverse)} adverse inspection(s)."),
+            evidence=open_permits + adverse,
+            score=graded_score(len(open_permits), len(minor), len(severe)),
         )
 
 
@@ -97,7 +116,7 @@ class RiskNarratorAgent:
         """Verified, per-claim assessment. Each claim is tied to a real source
         record; any claim with an invented number or unknown source tag causes a
         fall back to deterministic claims (so output is always source-backed)."""
-        tagged, tag_map = evidence_index(findings)
+        tagged, tag_map, id_to_tag = evidence_index(findings)
         valid_tags = {t["tag"] for t in tagged}
         ev = "\n".join(
             f"{t['tag']} [{t['dataset']}] {t['kind']}" + (f": {t['detail']}" if t["detail"] else "")
@@ -110,7 +129,7 @@ class RiskNarratorAgent:
         except Exception:  # offline / malformed output
             parsed = None
         if parsed is None or verify_claims(parsed, address, findings, valid_tags):
-            parsed = deterministic_claims(address, findings, tagged)
+            parsed = deterministic_claims(address, findings, tagged, id_to_tag)
         return resolve_claims(parsed, tag_map)
 
     def run(self, address: str, findings: list[Finding]) -> str:

@@ -18,7 +18,7 @@ def test_tools_operate_on_loaded_graph():
 
     ranked = mcp_server.top_risk(limit=3)
     assert normalize_address(ranked[0]["address"]) == normalize_address("100 Queen St W")
-    assert ranked[0]["risk_score"] == 1.0
+    assert ranked[0]["risk_score"] == 0.826
 
     report = mcp_server.analyze_address("100 Queen St W")
-    assert report["risk_score"] == 1.0
+    assert report["risk_score"] == 0.826 and report["found"] is True

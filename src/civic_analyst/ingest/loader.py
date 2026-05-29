@@ -66,6 +66,8 @@ def _resolve_plan(columns: list[str], kind: str) -> dict[str, Any]:
         "id_col": id_col,
         "state_attr": state_attr,
         "state_col": _find_col(columns, state_kws),
+        # A date column makes each evidence row traceable to a real, dated record (#5).
+        "date_col": _find_col(columns, ("date", "issued", "inspection_date", "_dt")),
         "lat_col": _find_col(columns, ("latitude", "lat")),
         "lng_col": _find_col(columns, ("longitude", "long", "lng")),
     }
@@ -108,6 +110,10 @@ def load_file(graph: CivicGraph, key: str, path: Path) -> int:
         attrs: dict[str, Any] = {"dataset": key}
         if plan["state_col"]:
             attrs[plan["state_attr"]] = row.get(plan["state_col"])
+        if plan["date_col"]:
+            date_val = str(row.get(plan["date_col"], "")).strip()
+            if date_val:
+                attrs["date"] = date_val
         graph.add_record(kind, record_id, address, lat=_coord(row, plan["lat_col"]),
                          lng=_coord(row, plan["lng_col"]), **attrs)
         added += 1

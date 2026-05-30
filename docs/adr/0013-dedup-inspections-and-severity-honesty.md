@@ -7,12 +7,20 @@ Date: 2026-05-30
 
 DineSafe is published **one CSV row per deficiency line-item**, not one row per
 inspection. In the committed `demo_data/dinesafe__downtown.csv` slice this means
-**250 raw rows collapse to ~89 distinct (address, inspectionDate) visits** — so a
-single dated inspection of a busy premises showed up as N separate "inspections".
-Because the risk score sums per-inspection weight, this **inflated risk**: a building
-with one Conditional-Pass visit carrying 9 deficiencies scored as if it had 9
-inspections. The net effect was a useless triage signal — **~19 of the demo
-addresses landed in HIGH** with almost nothing in MEDIUM/LOW.
+**250 raw rows represent only ~135 distinct establishment visits** — so a single
+dated inspection of a busy premises showed up as N separate "inspections". Because
+the risk score sums per-inspection weight, this **inflated risk**: a building with
+one Conditional-Pass visit carrying 9 deficiencies scored as if it had 9 inspections.
+The net effect was a useless triage signal — **~19 of the demo addresses landed in
+HIGH** with almost nothing in MEDIUM/LOW.
+
+**Choosing the de-dup key matters.** A naïve (normalized address, date) key
+*over*-collapses: distinct establishments that share a building and are inspected the
+same day fuse into one. The clearest example is **1 Blue Jays Way (Rogers Centre):
+seven distinct `estId`s (seven food vendors) inspected on 2025-10-20** — an
+address-keyed merge would report them as a single inspection. Across the slice **26 of
+the address+date groups fuse more than one `estId`**, under-counting real inspections.
+The correct grain is the **establishment**, identified by `estId`.
 
 Two related honesty problems surfaced alongside the over-count:
 
@@ -30,14 +38,20 @@ Two related honesty problems surfaced alongside the over-count:
 Three coherent changes, score formula and weights unchanged:
 
 1. **De-dup inspections by visit (`ingest/loader.py`).** When loading
-   inspection-kind records and a usable date column exists, collapse rows sharing
-   the same (normalized address, date) into **one visit record**: keep the **worst
-   severity** across the group, and expose a `deficiency_count` attribute for
-   display. If a file has **no usable date column**, fall back to per-row (so other
-   feeds and fixtures are unaffected). Grouping is on the *normalized* (street-level)
-   address — the same key the rest of the system joins on — which fuses unit-level
-   variants of one building inspected the same day; the 250-row slice resolves to 76
-   visits at that granularity.
+   inspection-kind records, collapse the deficiency line-items of a single visit into
+   **one visit record** — keeping the **worst severity** across the group and exposing
+   a `deficiency_count` attribute for display. The grouping key, in priority order:
+   - **`(estId, inspectionDate)`** when an establishment-id column exists (DineSafe).
+     This collapses one premises' own line-items while keeping **distinct
+     establishments that share an address+date separate** (the Rogers-Centre case).
+   - **`(normalized address, date)`** as a fallback when there is **no estId column**
+     (e.g. the synthetic `fixtures/dinesafe__sample.csv`).
+   - **per-row** (no collapse) when there is **no usable date column**, so other feeds
+     and fixtures are unaffected.
+
+   On the committed slice the 250 line-items resolve to **135 establishment visits**
+   under the `(estId, date)` key — *not* the ~76 an address-keyed merge would have
+   produced, which would have silently dropped 26 groups' worth of distinct vendors.
 
 2. **Prose honesty (`agents/subagents.py`, `agents/verify.py`).** Reserve the word
    **"adverse" for SEVERE outcomes only** (fail / closed / conviction). A Conditional
@@ -61,10 +75,13 @@ Three coherent changes, score formula and weights unchanged:
   a real risk gradient instead of a saturated HIGH bucket. The single real conviction
   is the only SEVERE inspection site.
 - **The golden invariant holds.** `100 Queen St W → 0.826, high` is preserved: the
-  pinned `fixtures/dinesafe__sample.csv` gained an `inspectionDate` column giving its
-  two "Fail" rows **distinct dates**, so they remain **two visits → two severe → weight
-  5.0 → 0.826**.
+  pinned `fixtures/dinesafe__sample.csv` has **no estId column**, so it takes the
+  `(address, date)` fallback; its two "Fail" rows were given **distinct dates**, so
+  they remain **two visits → two severe → weight 5.0 → 0.826**.
+- **No over-collapse.** A regression test asserts two distinct estIds at the same
+  address+date stay as **two** inspection records, and on the real slice the number of
+  address+date groups fusing more than one estId is **0** under the new key.
 - **Grounded-citation behavior is intact** — claims still cite only real evidence
   tags; the narrator prompt is unchanged.
-- The `demo_data` count guard moves from `dinesafe: 250` to `dinesafe: 76` to lock in
-  the de-dup.
+- The `demo_data` count guard moves from `dinesafe: 250` to `dinesafe: 135` to lock in
+  the establishment-level de-dup.

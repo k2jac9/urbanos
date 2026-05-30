@@ -186,6 +186,32 @@ def test_inspection_visits_dedup_by_address_and_date(tmp_path: Path):
     assert recs[1]["deficiency_count"] == 1
 
 
+def test_distinct_establishments_same_address_and_date_stay_separate(tmp_path: Path):
+    # Over-collapse guard (#3): two DIFFERENT establishments (estIds) at the SAME
+    # address inspected the SAME day — e.g. food vendors sharing a stadium — must
+    # remain TWO inspection records. Keying on (estId, date) keeps them apart; only
+    # one establishment's own line-items collapse.
+    _write(
+        tmp_path,
+        "dinesafe__shared.csv",
+        """
+        _id,estId,Establishment Address,inspectionStatus,inspectionDate
+        1,AAA,1 Blue Jays Way,Pass,2025-10-20
+        2,AAA,1 Blue Jays Way,Conditional Pass,2025-10-20
+        3,BBB,1 Blue Jays Way,Pass,2025-10-20
+        """,
+    )
+    graph = CivicGraph()
+    summary = load_into_graph(graph, tmp_path)
+    # 2 establishments -> 2 visits (AAA's 2 line-items collapse; BBB stays separate),
+    # NOT 1 over-collapsed visit and NOT 3 per-row records.
+    assert summary == {"dinesafe": 2}
+    recs = graph.records_for("1 Blue Jays Way", kind="inspection")
+    assert len(recs) == 2
+    defs = sorted(r["deficiency_count"] for r in recs)
+    assert defs == [1, 2]  # BBB -> 1 line-item, AAA -> 2 collapsed
+
+
 def test_no_date_column_falls_back_to_per_row(tmp_path: Path):
     # No usable date column -> do NOT collapse (other fixtures/feeds unaffected).
     _write(
@@ -233,7 +259,9 @@ def test_demo_data_counts_are_stable():
     # heuristic change shifts them, this fails loudly before it hits the demo.
     graph = CivicGraph()
     summary = load_into_graph(graph, _DEMO_DATA)
-    # dinesafe is now de-duped per VISIT (address+date), not per line-item: the 250
-    # raw deficiency rows collapse to 76 distinct visits at the street-address level
-    # the rest of the system joins on (#3 — kills the 250 over-count inflation).
-    assert summary == {"permits": 192, "dinesafe": 76, "licences": 105}
+    # dinesafe is now de-duped per VISIT keyed by (estId, inspectionDate), not per
+    # line-item: the 250 raw deficiency rows collapse to 135 distinct establishment
+    # visits (#3). Keying on estId (not address) keeps distinct vendors that share a
+    # building+date separate — e.g. the 7 food stands at Rogers Centre — so this does
+    # NOT over-collapse to the ~76 an (address, date) key would have produced.
+    assert summary == {"permits": 192, "dinesafe": 135, "licences": 105}

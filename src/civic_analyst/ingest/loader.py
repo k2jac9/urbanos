@@ -100,6 +100,10 @@ def _resolve_plan(columns: list[str], kind: str) -> dict[str, Any]:
         # Real enforcement outcome (DineSafe OutcomeDesc), used additively to escalate
         # a visit to SEVERE on a conviction/order/closure keyword (#3b).
         "outcome_desc_col": _find_col(columns, ("outcomedesc", "outcome desc")),
+        # Establishment id — the de-dup key for collapsing ONE premises' deficiency
+        # line-items (estId+date) WITHOUT fusing distinct vendors that share a building
+        # (e.g. 7 food stands at Rogers Centre, same address+date) (#3).
+        "est_id_col": _find_col(columns, ("estid", "establishment id", "establishmentid")),
         "lat_col": _find_col(columns, ("latitude", "lat")),
         "lng_col": _find_col(columns, ("longitude", "long", "lng")),
     }
@@ -155,8 +159,9 @@ def load_file(graph: CivicGraph, key: str, path: Path) -> int:
     plan = _resolve_plan(columns, kind)
     # Inspection visits are line-itemised in DineSafe (one CSV row per deficiency),
     # so a single dated visit shows up as N rows. When a usable date column exists,
-    # collapse rows sharing (address, date) into ONE visit record (#3); with no date
-    # column we fall back to per-row so other feeds/fixtures are unaffected.
+    # collapse rows of ONE visit into ONE record (#3) keyed by (estId, date) — or
+    # (address, date) when there's no estId; with no date column we fall back to
+    # per-row so other feeds/fixtures are unaffected.
     if kind == "inspection" and plan["date_col"]:
         return _load_inspection_visits(graph, key, kind, plan, rows)
     added = 0
@@ -180,12 +185,18 @@ def load_file(graph: CivicGraph, key: str, path: Path) -> int:
 
 def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
                             plan: dict[str, Any], rows: list[dict[str, Any]]) -> int:
-    """Group inspection rows by (normalized address, date) into one visit each.
+    """Group inspection rows into one visit each, keyed by (estId, date) — falling
+    back to (normalized address, date) when there is no establishment-id column.
 
-    The collapsed record keeps the WORST severity across its line-items (so the score
-    sees one visit, not N deficiencies), records `deficiency_count` for display, and is
-    escalated to SEVERE if any line-item's OutcomeDesc names a conviction/order/closure
-    (#3b — additive on top of inspectionStatus, which stays the primary signal)."""
+    Keying on estId collapses ONE premises' deficiency line-items while keeping
+    DISTINCT establishments that share a building (and date) separate — e.g. the
+    seven food vendors at 1 Blue Jays Way (Rogers Centre) inspected the same day are
+    seven visits, not one. The collapsed record keeps the WORST severity across its
+    line-items (so the score sees one visit, not N deficiencies), records
+    `deficiency_count` for display, and is escalated to SEVERE if any line-item's
+    OutcomeDesc names a conviction/order/closure (#3b — additive on top of
+    inspectionStatus, which stays the primary signal)."""
+    est_col = plan["est_id_col"]
     # Preserve first-seen order so evidence/ids stay stable across loads.
     visits: dict[tuple[str, str], dict[str, Any]] = {}
     order: list[tuple[str, str]] = []
@@ -194,7 +205,10 @@ def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
         if not address:
             continue
         date_val = str(row.get(plan["date_col"], "")).strip()
-        gkey = (normalize_address(address), date_val)
+        # estId, when present, scopes the group to a single establishment so distinct
+        # vendors at a shared address+date never fuse; else fall back to the address.
+        est_val = str(row.get(est_col, "")).strip() if est_col else ""
+        gkey = ((f"est:{est_val}" if est_val else normalize_address(address)), date_val)
         outcome = row.get(plan["state_col"]) if plan["state_col"] else None
         sev = classify_inspection(outcome)
         if plan["outcome_desc_col"] and _has_conviction(row.get(plan["outcome_desc_col"])):

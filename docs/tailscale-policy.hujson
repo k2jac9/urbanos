@@ -3,18 +3,26 @@
 // login.tailscale.com -> Access Controls. See docs/REMOTE_ACCESS.md.
 //
 // What this enables:
-//   - grants    : full connectivity between your own devices (open mesh).
-//   - ssh       : demo operators (alex + inboxtoronto) SSH into the box with no
-//                 re-auth (accept) as `asus`/root; plus members -> own devices
-//                 (check). Covers `ssh asus@gx10-4428`.
-//   - nodeAttrs : lets your devices (incl. gx10-4428) publish a service to the
+//   - tagOwners : who may apply tag:demo (the shared box tag).
+//   - grants    : full connectivity between your tailnet devices (open mesh).
+//   - ssh       : demo operators (alex + inboxtoronto) SSH into the TAGGED box
+//                 with no re-auth (accept) as `asus`/root; plus members -> own
+//                 devices (check). Covers `ssh asus@gx10-4428`.
+//   - nodeAttrs : lets devices (incl. the tagged box) publish a service to the
 //                 PUBLIC internet via `tailscale funnel` (the demo URL).
+//
+// Why a TAG: Tailscale only allows a user-identity `dst` for SSH into your OWN
+// devices ("users in dst are only allowed from the same user"). To let a SECOND
+// user (inboxtoronto@) SSH into the box, the box must be owned by a TAG and the
+// ssh rule must target that tag. One-time, on the box:
+//     sudo tailscale up --ssh --advertise-tags=tag:demo
+// (Tagged nodes are owned by the tag, not a user, and don't key-expire — handy
+// for a long-running demo box. Re-enable Funnel afterwards: make demo-public.)
 {
-    // Declare static groups of users. (Uncomment + fill in for the teammate-tag
-    // option at the bottom.)
-    // "groups": {
-    //     "group:team": ["you@example.com", "teammate@example.com"],
-    // },
+    // Who may own/apply the demo tag. autogroup:admin = tailnet admins (you).
+    "tagOwners": {
+        "tag:demo": ["autogroup:admin"],
+    },
 
     // Connectivity grants. Allow-all between your tailnet devices.
     "grants": [
@@ -22,22 +30,18 @@
     ],
 
     // Tailscale SSH.
-    //   action "check"  = require periodic browser re-auth (secure default).
     //   action "accept" = no re-auth prompt (frictionless for a live demo).
-    // NB: ssh `dst` targets identities/tags, NOT hostnames. The box gx10-4428 is
-    // owned by alexcastellanos29@gmail.com, so dst = that user = the box (and any
-    // other device that user owns). To scope strictly to the box, tag it instead
-    // (see the OPTIONAL block below).
+    //   action "check"  = periodic browser re-auth (secure default).
     "ssh": [
-        // Demo operators -> the box, no re-auth, as the local user `asus` or root.
-        // inboxtoronto@ must be a member of this tailnet (admin console -> Users -> Invite).
+        // Demo operators -> the tagged box, no re-auth, as local `asus` or root.
+        // inboxtoronto@ must be a member of this tailnet (admin -> Users -> Invite).
         {
             "action": "accept",
             "src":    ["alexcastellanos29@gmail.com", "inboxtoronto@gmail.com"],
-            "dst":    ["alexcastellanos29@gmail.com"],
+            "dst":    ["tag:demo"],
             "users":  ["asus", "root"],
         },
-        // Convenience: members can still SSH into their own devices (check mode).
+        // Convenience: members can still SSH into their OWN devices (check mode).
         {
             "action": "check",
             "src":    ["autogroup:member"],
@@ -46,39 +50,18 @@
         },
     ],
 
-    // Funnel: permit members' devices to expose a service to the public
-    // internet over HTTPS. Required for the public demo URL
-    // (https://gx10-4428.<tailnet>.ts.net). Also needs MagicDNS + HTTPS
-    // Certificates enabled under the DNS tab.
+    // Funnel: permit devices to expose a service to the public internet over
+    // HTTPS (the public demo URL). Tagged nodes are NOT "members", so grant the
+    // demo tag too. Also needs MagicDNS + HTTPS Certificates under the DNS tab.
     "nodeAttrs": [
         {
-            "target": ["autogroup:member"],
+            "target": ["autogroup:member", "tag:demo"],
             "attr":   ["funnel"],
         },
     ],
 
-    // ----------------------------------------------------------------------
-    // OPTIONAL: shared SSH for teammates on their OWN Tailscale accounts.
-    // The rule above only allows SSH into devices you OWN (autogroup:self), so
-    // teammates on separate accounts can't SSH in. To share, tag the box and
-    // grant the team SSH to that tag. Then bring the box up with:
-    //     sudo tailscale up --ssh --advertise-tags=tag:demo
-    // (Tagged nodes are owned by the tag, not a user.)
-    //
-    // "tagOwners": {
-    //     "tag:demo": ["autogroup:admin"],
-    // },
-    // Append to "ssh":
-    // {
-    //     "action": "check",
-    //     "src":    ["group:team"],
-    //     "dst":    ["tag:demo"],
-    //     "users":  ["asus"],
-    // },
-    // ----------------------------------------------------------------------
-
     // Validate access rules on save.
     // "tests": [
-    //     {"src": "you@example.com", "accept": ["gx10-4428:22"]},
+    //     {"src": "inboxtoronto@gmail.com", "accept": ["tag:demo:22"]},
     // ],
 }

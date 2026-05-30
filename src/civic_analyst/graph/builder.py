@@ -85,6 +85,13 @@ class CivicGraph:
     def __init__(self) -> None:
         self.g = nx.MultiDiGraph()
 
+    def clear(self) -> None:
+        """Drop all nodes/edges in place, keeping this instance (sub-agents hold a
+        reference to it). Lets the app reload cleanly on (re)startup instead of
+        accumulating — so a fresh lifespan rebuilds from the current DATA_DIR rather
+        than stacking datasets from a previous load (also makes API tests order-safe)."""
+        self.g.clear()
+
     def add_address(
         self, raw_address: str, lat: float | None = None, lng: float | None = None
     ) -> str:

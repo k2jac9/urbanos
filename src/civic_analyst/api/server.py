@@ -44,6 +44,7 @@ def _prewarm_model() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _graph.clear()  # reload cleanly on (re)startup; don't accumulate prior loads
     app.state.load_summary = load_into_graph(_graph, settings.data_dir)
     if settings.llm_prewarm:
         threading.Thread(target=_prewarm_model, daemon=True).start()

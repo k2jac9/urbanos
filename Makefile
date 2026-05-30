@@ -1,5 +1,5 @@
 .PHONY: install install-hooks data serve cli test demo demo-public funnel-off demo-cli demo-data \
-        urbanos urbanos-cli urbanos-accel
+        urbanos urbanos-cli urbanos-accel urbanos-bench
 
 # demo  -> real downtown-Toronto slice (demo_data/), pins land on the offline map.
 # demo-cli/tests -> synthetic, deterministic fixtures/.
@@ -86,3 +86,9 @@ urbanos-accel:
 	$(PYTHON) -m pip install -q maturin
 	$(dir $(PYTHON))maturin develop --release -m native/Cargo.toml
 	@PYTHONPATH=src $(PYTHON) -c "from urban_os.kernel import accel; print('Urban-OS transport backend:', accel.backend_name())"
+
+# Benchmark the active transport backend vs the numpy reference: asserts f64
+# parity (when rust is built) and reports the wall-clock speedup. Runs anywhere
+# and degrades to a numpy-only baseline when the rust core is absent.
+urbanos-bench:
+	PYTHONPATH=src $(PYTHON) scripts/bench_urbanos_accel.py

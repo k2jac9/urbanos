@@ -141,6 +141,12 @@
     @media (prefers-reduced-motion: reduce) {
       html[data-theme="cyber"] #panel::after { display: none; }
     }
+    /* Focused-building label popup (shown when a building is in focus in 3D). */
+    .maplibregl-popup.focuspop .maplibregl-popup-content { background: #0a1422; color: #bfefff;
+      border: 1px solid #00e5ff55; border-radius: 8px; font-size: 12px; padding: 8px 12px;
+      box-shadow: 0 0 12px #00e5ff44; }
+    .maplibregl-popup.focuspop .maplibregl-popup-tip {
+      border-top-color: #0a1422; border-bottom-color: #0a1422; }
   </style>
 </head>
 <body>
@@ -239,6 +245,11 @@
         '<p class="hint">Select a pin or an address to see its risk read.</p>';
       document.querySelectorAll('#addrlist button').forEach((b) => b.removeAttribute('aria-current'));
       setSelected(null);
+      if (PRES && mapReady) {   // back out of a building focus to the risk-skyline overview
+        clearFocus();
+        if (map.getLayer('risk3d')) map.setLayoutProperty('risk3d', 'visibility', 'visible');
+        map.easeTo({ zoom: 13.4, pitch: 55, bearing: -18, duration: 800 });
+      }
     }
 
     async function analyze(address) {
@@ -248,12 +259,8 @@
       document.querySelectorAll('#addrlist button').forEach((b) =>
         b.setAttribute('aria-current', String(b.dataset.label === address)));
       setSelected(address);
-      // In Presentation Mode, orbit-in on the chosen address for a cinematic 3D focus.
-      if (PRES) {
-        const r = ADDR_ROWS.find((a) => a.label === address);
-        if (r) map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 15),
-                           pitch: 60, bearing: -18, duration: 1100 });
-      }
+      // In Presentation Mode, focus the real building at the address (extrude + orbit).
+      if (PRES) focusBuilding(address);
 
       // Not-found is NOT an all-clear: show a distinct state, never a 0 score (#2).
       if (!d.found) {
@@ -415,11 +422,15 @@
     }
     function enter3D() {
       if (!mapReady) return;
-      if (!map.getLayer('bld3d')) {
+      if (!map.getLayer('bldreal')) {
         try {
-          map.addLayer({ id: 'bld3d', source: 'proto', 'source-layer': 'buildings',
+          // Real building skyline: extrude each footprint to its true `height` (metres)
+          // from the basemap, falling back to ~9 m where the attribute is missing.
+          map.addLayer({ id: 'bldreal', source: 'proto', 'source-layer': 'buildings',
             type: 'fill-extrusion', minzoom: 13,
-            paint: { 'fill-extrusion-color': '#1b2740', 'fill-extrusion-height': 22,
+            paint: { 'fill-extrusion-color': '#1b2740',
+                     'fill-extrusion-height': ['coalesce', ['get', 'height'], 9],
+                     'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
                      'fill-extrusion-opacity': 0.85 } }, 'risk-pins');
         } catch (e) { /* basemap may lack a buildings layer — columns still work */ }
       }
@@ -445,10 +456,68 @@
       map.easeTo({ pitch: 55, bearing: -18, duration: 900 });
     }
     function exit3D() {
+      clearFocus();
       if (map.getLayer('risk3d')) map.removeLayer('risk3d');
       if (map.getSource('risk3d')) map.removeSource('risk3d');
-      if (map.getLayer('bld3d')) map.removeLayer('bld3d');
+      if (map.getLayer('bldreal')) map.removeLayer('bldreal');
       if (mapReady) map.easeTo({ pitch: 0, bearing: 0, duration: 700 });
+    }
+    // ---- Real building focus: extrude the actual footprint at the selected address ----
+    const focusPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false,
+      offset: 14, className: 'focuspop' });
+    let focusSeq = 0;
+    const bldCentroid = (geom) => {
+      const ring = (geom && geom.coordinates && geom.coordinates[0]) || [];
+      let x = 0, y = 0, n = 0;
+      ring.forEach((c) => { x += c[0]; y += c[1]; n++; });
+      return n ? [x / n, y / n] : null;
+    };
+    function clearFocus() {
+      focusPopup.remove();
+      if (map.getLayer('focusbld')) map.removeLayer('focusbld');
+      if (map.getSource('focusbld')) map.removeSource('focusbld');
+    }
+    function focusBuilding(label) {
+      const row = ADDR_ROWS.find((a) => a.label === label);
+      if (!row || !mapReady) return;
+      const want = (label.match(/^\s*(\d+)/) || [])[1];   // leading house number
+      const seq = ++focusSeq;
+      if (map.getLayer('risk3d')) map.setLayoutProperty('risk3d', 'visibility', 'none');
+      map.flyTo({ center: [row.lng, row.lat], zoom: 17.3, pitch: 64, bearing: -22, duration: 1200 });
+      map.once('idle', () => {
+        if (seq !== focusSeq || !PRES) return;   // superseded by a newer click, or left 3D
+        const pt = map.project([row.lng, row.lat]), pad = 90;
+        let feats = map.queryRenderedFeatures(
+          [[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]], { layers: ['bldreal'] });
+        if (!feats.length) feats = map.queryRenderedFeatures(
+          [[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]], { layers: ['buildings'] });
+        // Prefer the footprint whose house number matches; else the nearest centroid.
+        let target = want && feats.find((f) => String(f.properties.addr_housenumber) === want);
+        if (!target) {
+          let best = Infinity;
+          feats.forEach((f) => {
+            if (f.geometry.type !== 'Polygon') return;
+            const c = bldCentroid(f.geometry); if (!c) return;
+            const d = (c[0] - row.lng) ** 2 + (c[1] - row.lat) ** 2;
+            if (d < best) { best = d; target = f; }
+          });
+        }
+        clearFocus();
+        if (!target) return;
+        const col = { high: '#ff3b6b', medium: '#ffb020', low: '#ffe34d', none: '#2bff88' }[bandOf(row.risk_score)];
+        map.addSource('focusbld', { type: 'geojson',
+          data: { type: 'Feature', properties: target.properties, geometry: target.geometry } });
+        map.addLayer({ id: 'focusbld', source: 'focusbld', type: 'fill-extrusion',
+          paint: { 'fill-extrusion-color': col,
+                   'fill-extrusion-height': ['coalesce', ['get', 'height'], 18],
+                   'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+                   'fill-extrusion-opacity': 0.96 } });
+        const h = target.properties.height, c = bldCentroid(target.geometry);
+        if (c) focusPopup.setLngLat(c).setHTML(
+          '<b>' + esc(row.label) + '</b><br>' +
+          (h ? '≈ ' + h + ' m tall' : 'height approx.') +
+          ' · risk ' + row.risk_score).addTo(map);
+      });
     }
     function setPresentation(on) {
       PRES = on;

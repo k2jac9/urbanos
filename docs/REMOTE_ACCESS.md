@@ -48,13 +48,25 @@ Verify: `tailscale status` (should show the box `100.x` IP and `online`).
 ### 2. Enable Funnel (Tailscale admin console — https://login.tailscale.com)
 Funnel = the public demo URL. One-time, browser-only:
 1. **DNS** tab → enable **MagicDNS** and **HTTPS Certificates**.
-2. **Access Controls** → add the Funnel node attribute to the policy file:
+2. **Access Controls** → use the policy in [`tailscale-policy.hujson`](./tailscale-policy.hujson)
+   (this tailnet uses the new **grants** syntax). The key addition over the default is a
+   top-level `nodeAttrs` block granting `funnel`:
    ```json
    "nodeAttrs": [
-     { "target": ["autogroup:member"], "attr": ["funnel"] }
-   ]
+       { "target": ["autogroup:member"], "attr": ["funnel"] },
+   ],
    ```
+   Paste the whole file, or just add that block alongside your existing `grants` and `ssh`.
    (Newer tailnets also expose a per-machine **Funnel** toggle in the machine's `⋯` menu.)
+
+> **SSH already works** with the default `ssh` rule (`autogroup:member` → `autogroup:self`,
+> `check` mode) because the box is registered under your account — no change needed for SSH.
+> - `check` mode re-prompts for browser auth ~every 12h; switch to `"action": "accept"` for a
+>   frictionless demo.
+> - That rule only allows SSH into devices **you own**. For teammates on their **own** Tailscale
+>   accounts, tag the box (`tag:demo`) and grant the team SSH to it — see the commented
+>   *OPTIONAL* block in [`tailscale-policy.hujson`](./tailscale-policy.hujson), then bring the box
+>   up with `sudo tailscale up --ssh --advertise-tags=tag:demo`.
 
 ### 3. Expose the demo publicly
 ```bash

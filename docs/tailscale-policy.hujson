@@ -1,0 +1,70 @@
+// Tailscale access-control policy for the GX10 demo tailnet.
+// Format: HuJSON (JSON + // comments + trailing commas). Paste into
+// login.tailscale.com -> Access Controls. See docs/REMOTE_ACCESS.md.
+//
+// What this enables:
+//   - grants    : full connectivity between your own devices (open mesh).
+//   - ssh       : Tailscale SSH into your own devices (check mode = periodic
+//                 browser re-auth). Covers `ssh asus@gx10-4428`.
+//   - nodeAttrs : lets your devices (incl. gx10-4428) publish a service to the
+//                 PUBLIC internet via `tailscale funnel` (the demo URL).
+{
+    // Declare static groups of users. (Uncomment + fill in for the teammate-tag
+    // option at the bottom.)
+    // "groups": {
+    //     "group:team": ["you@example.com", "teammate@example.com"],
+    // },
+
+    // Connectivity grants. Allow-all between your tailnet devices.
+    "grants": [
+        {"src": ["*"], "dst": ["*"], "ip": ["*"]},
+    ],
+
+    // Tailscale SSH. Members can SSH into their OWN devices.
+    //   action "check"  = require periodic browser re-auth (secure default).
+    //   action "accept" = no re-auth prompt (frictionless for a live demo).
+    "ssh": [
+        {
+            "action": "check",
+            "src":    ["autogroup:member"],
+            "dst":    ["autogroup:self"],
+            "users":  ["autogroup:nonroot", "root"],
+        },
+    ],
+
+    // Funnel: permit members' devices to expose a service to the public
+    // internet over HTTPS. Required for the public demo URL
+    // (https://gx10-4428.<tailnet>.ts.net). Also needs MagicDNS + HTTPS
+    // Certificates enabled under the DNS tab.
+    "nodeAttrs": [
+        {
+            "target": ["autogroup:member"],
+            "attr":   ["funnel"],
+        },
+    ],
+
+    // ----------------------------------------------------------------------
+    // OPTIONAL: shared SSH for teammates on their OWN Tailscale accounts.
+    // The rule above only allows SSH into devices you OWN (autogroup:self), so
+    // teammates on separate accounts can't SSH in. To share, tag the box and
+    // grant the team SSH to that tag. Then bring the box up with:
+    //     sudo tailscale up --ssh --advertise-tags=tag:demo
+    // (Tagged nodes are owned by the tag, not a user.)
+    //
+    // "tagOwners": {
+    //     "tag:demo": ["autogroup:admin"],
+    // },
+    // Append to "ssh":
+    // {
+    //     "action": "check",
+    //     "src":    ["group:team"],
+    //     "dst":    ["tag:demo"],
+    //     "users":  ["asus"],
+    // },
+    // ----------------------------------------------------------------------
+
+    // Validate access rules on save.
+    // "tests": [
+    //     {"src": "you@example.com", "accept": ["gx10-4428:22"]},
+    // ],
+}

@@ -4,8 +4,9 @@
 //
 // What this enables:
 //   - grants    : full connectivity between your own devices (open mesh).
-//   - ssh       : Tailscale SSH into your own devices (check mode = periodic
-//                 browser re-auth). Covers `ssh asus@gx10-4428`.
+//   - ssh       : demo operators (alex + inboxtoronto) SSH into the box with no
+//                 re-auth (accept) as `asus`/root; plus members -> own devices
+//                 (check). Covers `ssh asus@gx10-4428`.
 //   - nodeAttrs : lets your devices (incl. gx10-4428) publish a service to the
 //                 PUBLIC internet via `tailscale funnel` (the demo URL).
 {
@@ -20,10 +21,23 @@
         {"src": ["*"], "dst": ["*"], "ip": ["*"]},
     ],
 
-    // Tailscale SSH. Members can SSH into their OWN devices.
+    // Tailscale SSH.
     //   action "check"  = require periodic browser re-auth (secure default).
     //   action "accept" = no re-auth prompt (frictionless for a live demo).
+    // NB: ssh `dst` targets identities/tags, NOT hostnames. The box gx10-4428 is
+    // owned by alexcastellanos29@gmail.com, so dst = that user = the box (and any
+    // other device that user owns). To scope strictly to the box, tag it instead
+    // (see the OPTIONAL block below).
     "ssh": [
+        // Demo operators -> the box, no re-auth, as the local user `asus` or root.
+        // inboxtoronto@ must be a member of this tailnet (admin console -> Users -> Invite).
+        {
+            "action": "accept",
+            "src":    ["alexcastellanos29@gmail.com", "inboxtoronto@gmail.com"],
+            "dst":    ["alexcastellanos29@gmail.com"],
+            "users":  ["asus", "root"],
+        },
+        // Convenience: members can still SSH into their own devices (check mode).
         {
             "action": "check",
             "src":    ["autogroup:member"],

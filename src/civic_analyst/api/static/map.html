@@ -98,11 +98,56 @@
       #panel { position: static; width: 100%; min-width: 0; height: auto; }
       #addrnav { max-height: none; }
     }
+    /* ---- Presentation Mode toggle button (floats over the map) ---- */
+    .presmode { position: absolute; top: 10px; left: 10px; z-index: 3;
+      background: rgba(15,23,42,.8); color: #cbd5e1; border: 1px solid #334155;
+      border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+      cursor: pointer; backdrop-filter: blur(4px); letter-spacing: .03em; }
+    .presmode:hover { border-color: #64748b; }
+    /* ---- Cyber theme (Neon Tactical): active only while Presentation Mode is on.
+       Scoped to html[data-theme="cyber"] so default (Conservative) is untouched. ---- */
+    html[data-theme="cyber"] body, html[data-theme="cyber"] #panel { background: #05080f; color: #bfefff; }
+    html[data-theme="cyber"] #panel { border-left: 1px solid #00e5ff33; box-shadow: inset 0 0 70px #00e5ff14; }
+    html[data-theme="cyber"] #panel h1, html[data-theme="cyber"] #addr-h {
+      color: #eaffff; text-shadow: 0 0 8px #00e5ffaa; }
+    html[data-theme="cyber"] #panel h2 { color: #00e5ff; text-shadow: 0 0 6px #00e5ff66; }
+    html[data-theme="cyber"] .hint, html[data-theme="cyber"] .scorecap,
+    html[data-theme="cyber"] .ev-meta, html[data-theme="cyber"] .srcline { color: #7fb6c9; }
+    html[data-theme="cyber"] #score { color: #00e5ff;
+      font-family: ui-monospace, "Cascadia Code", monospace; text-shadow: 0 0 14px #00e5ffcc; }
+    html[data-theme="cyber"] #claims li { font-family: ui-monospace, monospace; }
+    html[data-theme="cyber"] .band-high .sym, html[data-theme="cyber"] .band-high .bandlbl,
+    html[data-theme="cyber"] .b-high { color: #ff3b6b; text-shadow: 0 0 8px #ff3b6b88; }
+    html[data-theme="cyber"] .band-medium .sym, html[data-theme="cyber"] .band-medium .bandlbl,
+    html[data-theme="cyber"] .b-medium { color: #ffb020; }
+    html[data-theme="cyber"] .band-low .sym, html[data-theme="cyber"] .band-low .bandlbl,
+    html[data-theme="cyber"] .b-low { color: #ffe34d; }
+    html[data-theme="cyber"] .band-none .sym, html[data-theme="cyber"] .band-none .bandlbl,
+    html[data-theme="cyber"] .b-none { color: #2bff88; }
+    html[data-theme="cyber"] .verify { color: #00e5ff; border-color: #00e5ff;
+      background: #00e5ff14; box-shadow: 0 0 8px #00e5ff44; }
+    html[data-theme="cyber"] .verify[aria-expanded="true"] { background: #00e5ff26; color: #eaffff; }
+    html[data-theme="cyber"] .chip, html[data-theme="cyber"] #addrlist button,
+    html[data-theme="cyber"] #evlist li { background: #0a1422; border-color: #00e5ff33; color: #bfefff; }
+    html[data-theme="cyber"] .chip.digest { border-color: #00e5ff; color: #aef6ff; box-shadow: 0 0 10px #00e5ff44; }
+    html[data-theme="cyber"] #addrlist button[aria-current="true"] { border-color: #00e5ff; background: #07223a; }
+    html[data-theme="cyber"] #evlist li.ev-permit { border-left-color: #00e5ff; }
+    html[data-theme="cyber"] #evlist li.ev-inspection { border-left-color: #ff3b6b; }
+    html[data-theme="cyber"] .presmode { background: rgba(0,19,26,.8); color: #aef6ff;
+      border-color: #00e5ff; box-shadow: 0 0 12px #00e5ff55; }
+    html[data-theme="cyber"] #map { filter: contrast(1.12) saturate(1.4) hue-rotate(-12deg) brightness(.95); }
+    html[data-theme="cyber"] #panel::after { content: ""; position: fixed; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(0deg, #00e5ff08 0 1px, transparent 1px 3px); }
+    @media (prefers-reduced-motion: reduce) {
+      html[data-theme="cyber"] #panel::after { display: none; }
+    }
   </style>
 </head>
 <body>
   <a href="#panel" class="skip">Skip to analysis</a>
   <div id="map"></div>
+  <button id="presmode-btn" class="presmode" type="button" aria-pressed="false"
+          title="Toggle Presentation Mode — cyber theme + 3D risk skyline">◢ Presentation</button>
   <div id="panel" role="complementary" aria-label="Risk analysis" tabindex="-1">
     <h1>Toronto Civic Risk Analyst</h1>
     <p class="hint">100% on-device · offline vector map · pick an address or a map pin</p>
@@ -145,6 +190,7 @@
     };
     const bandOf = (r) => r >= 0.67 ? 'high' : r >= 0.34 ? 'medium' : r > 0 ? 'low' : 'none';
     let ADDR_ROWS = [];
+    let PRES = false, mapReady = false;   // Presentation Mode (cyber + 3D), default off
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -202,6 +248,12 @@
       document.querySelectorAll('#addrlist button').forEach((b) =>
         b.setAttribute('aria-current', String(b.dataset.label === address)));
       setSelected(address);
+      // In Presentation Mode, orbit-in on the chosen address for a cinematic 3D focus.
+      if (PRES) {
+        const r = ADDR_ROWS.find((a) => a.label === address);
+        if (r) map.flyTo({ center: [r.lng, r.lat], zoom: Math.max(map.getZoom(), 15),
+                           pitch: 60, bearing: -18, duration: 1100 });
+      }
 
       // Not-found is NOT an all-clear: show a distinct state, never a 0 score (#2).
       if (!d.found) {
@@ -346,6 +398,79 @@
       };
     }
 
+    // ---- Presentation Mode: cyber theme + 3D "risk skyline" (opt-in, default off) ----
+    // Each address becomes an extruded column: height = risk, color = band. Real building
+    // footprints are extruded for context. Fully native MapLibre — no new deps, stays offline.
+    const riskColor = (r) => r >= 0.67 ? '#ff3b6b' : r >= 0.34 ? '#ffb020' : r > 0 ? '#ffe34d' : '#2bff88';
+    function buildRisk3D() {
+      const D = 0.00012;  // half-width of each column footprint, in degrees
+      return { type: 'FeatureCollection', features: ADDR_ROWS
+        .filter((a) => a.lat && a.lng).map((a) => {
+          const x = a.lng, y = a.lat;
+          return { type: 'Feature',
+            properties: { label: a.label, h: 60 + a.risk_score * 640, color: riskColor(a.risk_score) },
+            geometry: { type: 'Polygon',
+              coordinates: [[[x-D, y-D], [x+D, y-D], [x+D, y+D], [x-D, y+D], [x-D, y-D]]] } };
+        }) };
+    }
+    function enter3D() {
+      if (!mapReady) return;
+      if (!map.getLayer('bld3d')) {
+        try {
+          map.addLayer({ id: 'bld3d', source: 'proto', 'source-layer': 'buildings',
+            type: 'fill-extrusion', minzoom: 13,
+            paint: { 'fill-extrusion-color': '#1b2740', 'fill-extrusion-height': 22,
+                     'fill-extrusion-opacity': 0.85 } }, 'risk-pins');
+        } catch (e) { /* basemap may lack a buildings layer — columns still work */ }
+      }
+      if (map.getSource('risk3d')) map.getSource('risk3d').setData(buildRisk3D());
+      else map.addSource('risk3d', { type: 'geojson', data: buildRisk3D() });
+      if (!map.getLayer('risk3d')) {
+        map.addLayer({ id: 'risk3d', source: 'risk3d', type: 'fill-extrusion',
+          paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-base': 0,
+                   'fill-extrusion-height': 0, 'fill-extrusion-opacity': 0.9 } });
+        // Animate the columns rising (rAF ramp — robust across paint-expression changes).
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) { map.setPaintProperty('risk3d', 'fill-extrusion-height', ['get', 'h']); }
+        else {
+          const t0 = performance.now();
+          (function grow() {
+            if (!map.getLayer('risk3d')) return;
+            const k = Math.min(1, (performance.now() - t0) / 700);
+            map.setPaintProperty('risk3d', 'fill-extrusion-height', ['*', ['get', 'h'], k]);
+            if (k < 1) requestAnimationFrame(grow);
+          })();
+        }
+      }
+      map.easeTo({ pitch: 55, bearing: -18, duration: 900 });
+    }
+    function exit3D() {
+      if (map.getLayer('risk3d')) map.removeLayer('risk3d');
+      if (map.getSource('risk3d')) map.removeSource('risk3d');
+      if (map.getLayer('bld3d')) map.removeLayer('bld3d');
+      if (mapReady) map.easeTo({ pitch: 0, bearing: 0, duration: 700 });
+    }
+    function setPresentation(on) {
+      PRES = on;
+      document.documentElement.setAttribute('data-theme', on ? 'cyber' : '');
+      try { localStorage.setItem('presmode', on ? '1' : '0'); } catch (e) { /* private mode */ }
+      const btn = document.getElementById('presmode-btn');
+      if (btn) {
+        btn.setAttribute('aria-pressed', String(on));
+        btn.textContent = on ? '◣ Presentation ON' : '◢ Presentation';
+      }
+      if (on) enter3D(); else exit3D();
+    }
+    document.getElementById('presmode-btn').addEventListener('click', () => setPresentation(!PRES));
+    // Restore saved preference (theme applies immediately; 3D applies once the map loads).
+    try { if (localStorage.getItem('presmode') === '1') PRES = true; } catch (e) { /* private mode */ }
+    document.documentElement.setAttribute('data-theme', PRES ? 'cyber' : '');
+    (function () {
+      const btn = document.getElementById('presmode-btn');
+      btn.setAttribute('aria-pressed', String(PRES));
+      btn.textContent = PRES ? '◣ Presentation ON' : '◢ Presentation';
+    })();
+
     map.on('load', async () => {
       const rows = await (await fetch('/addresses')).json();
       ADDR_ROWS = rows;
@@ -393,6 +518,12 @@
       map.on('mouseleave', 'risk-pins', () => {
         map.getCanvas().style.cursor = ''; hoverPopup.remove();
       });
+      // 3D risk columns are clickable/hoverable just like the flat pins.
+      map.on('click', 'risk3d', (e) => analyze(e.features[0].properties.label));
+      map.on('mouseenter', 'risk3d', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'risk3d', () => { map.getCanvas().style.cursor = ''; });
+      mapReady = true;
+      if (PRES) enter3D();   // restore 3D if the saved preference had it on
       // Set status LAST: it's the single "fully ready" signal (nothing rewrites
       // #detail after this, so an immediate analyze() can't be clobbered).
       status.textContent = rows.length + ' addresses. Click a pin or pick one below.';

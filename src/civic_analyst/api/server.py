@@ -20,7 +20,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..agents.digest import city_digest
+from ..agents.digest import city_digest, digest_cached
 from ..agents.llm import interactive_llm
 from ..agents.supervisor import Supervisor
 from ..config import settings
@@ -68,11 +68,21 @@ def favicon() -> FileResponse:
 
 @app.get("/health")
 def health() -> dict:
+    # digest_cached() reflects whether a *real* city digest is already memoized for
+    # the current ranking, so the demo can tell a warm /digest from a cold ~15s one.
     return {
         "status": "ok",
         "graph_nodes": len(_graph),
         "loaded": getattr(app.state, "load_summary", {}),
+        "interactive_model": settings.llm_model,
+        "batch_model": settings.llm_batch_model,
+        "digest_cached": digest_cached(_ranked_addresses()),
     }
+
+
+def _ranked_addresses() -> list[dict]:
+    """Addresses sorted hottest-first — the ranked set the digest summarizes."""
+    return sorted(addresses(), key=lambda r: r["risk_score"], reverse=True)
 
 
 @app.get("/addresses")
@@ -98,5 +108,5 @@ def analyze(address: str = Query(..., min_length=3, max_length=200)) -> dict:
 
 @app.get("/digest")
 def digest() -> dict:
-    ranked = sorted(addresses(), key=lambda r: r["risk_score"], reverse=True)
+    ranked = _ranked_addresses()
     return {"digest": city_digest(ranked), "ranked": ranked}

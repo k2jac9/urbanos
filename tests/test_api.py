@@ -20,7 +20,14 @@ def _score(addrs: list[dict], address: str) -> float:
 def test_endpoints_with_fixtures():
     with TestClient(app) as client:
         health = client.get("/health").json()
+        # Existing keys must stay intact (the map + other tests rely on them).
+        assert health["status"] == "ok"
+        assert health["graph_nodes"] > 0
         assert health["loaded"] == {"permits": 4, "dinesafe": 4, "311": 2, "licences": 3}
+        # New keys: model names + whether a real digest is already cached.
+        assert health["interactive_model"] == settings.llm_model
+        assert health["batch_model"] == settings.llm_batch_model
+        assert isinstance(health["digest_cached"], bool)
 
         addrs = client.get("/addresses").json()
         # Only DineSafe carries coords → 3 distinct geocoded addresses (labels are

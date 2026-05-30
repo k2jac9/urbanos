@@ -53,6 +53,39 @@
     .nomatch { border: 1px solid #b45309; background: #2a1c08; border-radius: 8px;
                padding: 12px; margin-top: 12px; }
     .nomatch .nm-h { color: #fbbf24; font-weight: 700; margin-bottom: 4px; }
+    /* Hero quick-jumps + City Digest controls. */
+    .quickrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+    .chip { background: #111c33; color: #e2e8f0; border: 1px solid #1e293b; border-radius: 999px;
+            padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .chip:hover { border-color: #64748b; }
+    .chip.digest { background: #14233f; border-color: #38bdf8; color: #bae6fd; font-weight: 600; }
+    #digest-out { margin-top: 8px; }
+    .digest-brief { font-size: 13px; line-height: 1.5; color: #cbd5e1; background: #111c33;
+                    border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; }
+    #digest-rank { list-style: none; margin: 8px 0 0; padding: 0; }
+    #digest-rank li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; margin: 3px 0; }
+    #digest-rank .rk-score { font-weight: 700; min-width: 40px; }
+    #digest-rank button { background: none; border: none; color: #93c5fd; cursor: pointer;
+                          padding: 0; font: inherit; text-align: left; text-decoration: underline; }
+    .err { border: 1px solid #b45309; background: #2a1c08; color: #fbbf24; border-radius: 8px;
+           padding: 10px 12px; font-size: 13px; }
+    .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 6px;
+               border: 2px solid #334155; border-top-color: #38bdf8; border-radius: 50%;
+               animation: spin .8s linear infinite; vertical-align: -1px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Evidence rows — every linked source record; licences are neutral identity context. */
+    #evlist { list-style: none; margin: 6px 0 0; padding: 0; }
+    #evlist li { font-size: 12px; margin: 4px 0; padding: 5px 8px; border-radius: 6px;
+                 background: #111c33; border-left: 3px solid #334155; color: #cbd5e1; }
+    #evlist li.ev-permit { border-left-color: #60a5fa; }
+    #evlist li.ev-inspection { border-left-color: #f87171; }
+    #evlist li.ev-licence { border-left-color: #475569; }   /* neutral: identity, not risk */
+    .ev-kind { font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: 10px;
+               margin-right: 6px; }
+    .ev-permit .ev-kind { color: #93c5fd; }
+    .ev-inspection .ev-kind { color: #fca5a5; }
+    .ev-licence .ev-kind { color: #94a3b8; }
+    .ev-meta { color: #94a3b8; }
     /* Visible, high-contrast focus ring on every interactive element. */
     a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
       outline: 2px solid #38bdf8; outline-offset: 2px; }
@@ -78,6 +111,18 @@
       <li class="b-low">● Low</li><li class="b-none">· OK</li>
     </ul>
     <div id="status" class="hint" role="status" aria-live="polite">Loading addresses…</div>
+    <h2>Hero pins</h2>
+    <div class="quickrow" id="herorow" aria-label="Jump to a hero address">
+      <button type="button" class="chip hero" data-label="500 BLOOR ST W">500 Bloor St W</button>
+      <button type="button" class="chip hero" data-label="85 FRONT ST E">85 Front St E</button>
+      <button type="button" class="chip hero" data-label="409 SPADINA AVE">409 Spadina Ave</button>
+    </div>
+    <h2>City digest</h2>
+    <div class="quickrow">
+      <button type="button" class="chip digest" id="digest-btn"
+              aria-controls="digest-out" aria-expanded="false">▸ Generate city briefing</button>
+    </div>
+    <div id="digest-out" aria-live="polite"></div>
     <div id="detail" aria-live="polite"></div>
     <h2 id="addrhead" hidden>Browse addresses by risk</h2>
     <nav id="addrnav" aria-label="Addresses by risk"><ul id="addrlist"></ul></nav>
@@ -186,6 +231,21 @@
         : total + ' linked source record' + (total === 1 ? '' : 's') + '.';
       const agents = (d.findings || []).map((f) => esc(f.agent)).join(' + ');
 
+      // Full evidence list: render every linked record by dataset/kind. Licences are
+      // neutral identity context (grey, not high-risk) — generic so any kind renders cleanly.
+      const evItems = (d.evidence || []).map((e) => {
+        const kind = String(e.kind || 'record').toLowerCase();
+        const meta = [e.detail, e.ref ? '#' + e.ref : '', e.date]
+          .filter(Boolean).map(esc).join(' · ');
+        return '<li class="ev-' + esc(kind) + '">' +
+          '<span class="ev-kind">' + esc(kind) + '</span>' +
+          '<span>' + esc(e.dataset) + '</span>' +
+          (meta ? ' <span class="ev-meta">— ' + meta + '</span>' : '') + '</li>';
+      }).join('');
+      const evBlock = evItems
+        ? '<h2>Linked source records</h2><ul id="evlist">' + evItems + '</ul>'
+        : '';
+
       detail.innerHTML =
         '<button class="back" type="button" onclick="resetOverview()">← Overview</button>' +
         '<h2 id="addr-label" hidden>Address</h2>' +
@@ -199,6 +259,7 @@
         '(verify each claim against its source)</span></h2>' +
         '<ul id="claims">' + claims + '</ul>' +
         '<p class="hint">' + evNote + '</p>' +
+        evBlock +
         '<p class="agentcap">Analyzed by ' + agents + ' sub-agents · deterministic score</p>';
     }
 
@@ -213,6 +274,60 @@
       btn.textContent = open ? '✕ hide' : '✓ verify';
     });
     addEventListener('keydown', (e) => { if (e.key === 'Escape') resetOverview(); });
+
+    // Hero quick-jumps: reuse the existing analyze() flow; pan to the pin if it's geocoded.
+    document.getElementById('herorow').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-label]');
+      if (!btn) return;
+      const label = btn.dataset.label;
+      const row = ADDR_ROWS.find((a) => a.label === label);
+      if (row) map.easeTo({ center: [row.lng, row.lat], zoom: Math.max(map.getZoom(), 15) });
+      analyze(label);
+      document.getElementById('panel').focus();
+    });
+
+    // City Digest: GET /digest (can take ~15s first call). Spinner + graceful errors;
+    // never throws into the map. Ranked rows reuse the analyze() flow on click.
+    const digestBtn = document.getElementById('digest-btn');
+    const digestOut = document.getElementById('digest-out');
+    let digestLoading = false;
+    digestBtn.addEventListener('click', async () => {
+      if (digestLoading) return;
+      digestLoading = true;
+      digestBtn.setAttribute('aria-expanded', 'true');
+      digestBtn.disabled = true;
+      digestOut.innerHTML =
+        '<p class="hint"><span class="spinner" aria-hidden="true"></span>Generating city briefing… (first run can take ~15s)</p>';
+      try {
+        const res = await fetch('/digest');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        const brief = d.digest
+          ? '<div class="digest-brief">' + esc(d.digest) + '</div>'
+          : '<p class="hint">No briefing text returned.</p>';
+        const ranked = (d.ranked || []).slice(0, 5).map((r) => {
+          const k = bandOf(r.risk_score);
+          return '<li><span class="rk-score b-' + k + '">' + r.risk_score + '</span>' +
+            '<button type="button" data-label="' + esc(r.label) + '">' + esc(r.label) + '</button></li>';
+        }).join('');
+        digestOut.innerHTML = brief +
+          (ranked ? '<h2>Top 5 by risk</h2><ul id="digest-rank">' + ranked + '</ul>' : '');
+      } catch (err) {
+        digestOut.innerHTML = '<div class="err" role="alert">Could not load the city digest (' +
+          esc(err.message) + '). The map and per-address analysis still work — try again.</div>';
+      } finally {
+        digestLoading = false;
+        digestBtn.disabled = false;
+      }
+    });
+    // Clicking a ranked address drives the same analyze() flow as a pin.
+    digestOut.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-label]');
+      if (!btn) return;
+      const row = ADDR_ROWS.find((a) => a.label === btn.dataset.label);
+      if (row) map.easeTo({ center: [row.lng, row.lat], zoom: Math.max(map.getZoom(), 15) });
+      analyze(btn.dataset.label);
+    });
 
     function renderAddressList(rows) {
       document.getElementById('addrhead').hidden = false;

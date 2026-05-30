@@ -96,6 +96,47 @@ tailscale serve  --bg 8000         # ...or serve it PRIVATELY on the tailnet onl
 tailscale funnel --https=443 off   # turn the public URL off
 ```
 
+### 4. Keep the demo up across reboots (systemd user service)
+Funnel config and `tailscaled` already survive a reboot, but `make demo` is a foreground
+process — so after a reboot the public URL would proxy to a dead `:8000` (judges see a **502**).
+A **systemd *user* service** closes that gap: it auto-starts the server on boot and restarts it
+on crash. No `sudo` needed (user unit + linger), so the box's non-sudo `asus` account can manage it.
+
+One-time, on the box:
+```bash
+loginctl enable-linger                       # run user services without an active login (no sudo)
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/civic-demo.service <<'UNIT'
+[Unit]
+Description=Civic Analyst demo (uvicorn :8000, real downtown data)
+Documentation=https://gx10-4428.taila9fe06.ts.net
+
+[Service]
+WorkingDirectory=/home/asus/dev/spark-hack-toronto
+Environment=DATA_DIR=demo_data
+ExecStart=/home/asus/dev/spark-hack-toronto/.venv/bin/python -m uvicorn civic_analyst.api.server:app --port 8000 --app-dir src
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+UNIT
+systemctl --user daemon-reload
+systemctl --user enable --now civic-demo.service     # start now + on every boot
+```
+Manage / inspect it:
+```bash
+systemctl --user status civic-demo        # is it running?
+systemctl --user restart civic-demo       # e.g. after a `git pull`
+systemctl --user stop civic-demo          # free :8000 to run `make demo` by hand
+journalctl --user -u civic-demo -f        # live logs
+```
+Notes:
+- The unit serves **local-only** (`:8000`); Funnel still publishes it — so `make funnel-off`
+  is still how you take the **public** URL down. The service keeps `:8000` alive underneath.
+- To run `make demo`/`make demo-public` by hand, `stop` the service first (avoids a `:8000` clash).
+- This is a CORE-demo safety net, not a CI-gated artifact — it lives on the box, not in the repo.
+
 ---
 
 ## SSH public-key fallback (works over LAN or tailnet)
@@ -161,6 +202,8 @@ curl -s https://gx10-4428.taila9fe06.ts.net/health      # → {"status":"ok",...
 ## Troubleshooting
 - `tailscale status` says *Logged out* → re-run `sudo tailscale up --ssh`.
 - Funnel error *"Funnel not available"* → finish admin-console step 2 (HTTPS certs + `funnel` nodeAttr).
-- Public URL 502 → the demo server isn't running; start `make demo` on the box.
+- Public URL 502 → the demo server isn't running. If the `civic-demo` service is installed:
+  `systemctl --user status civic-demo` (restart with `systemctl --user restart civic-demo`);
+  otherwise start `make demo` on the box. See *Keep the demo up across reboots* above.
 - Can't SSH over tailnet → confirm the **client** is signed into the **same tailnet** (`tailscale status` on the client).
 - LAN SSH only (no Tailscale): `ssh asus@10.10.52.82` — works only on the same wifi.

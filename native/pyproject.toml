@@ -1,0 +1,25 @@
+# Maturin build config for the optional Rust acceleration core.
+#
+# Build into the project venv (from this directory), on the aarch64 box:
+#     cd native && maturin develop --release
+# This compiles src/lib.rs and installs the `urban_os_native` extension module
+# into the active venv so `import urban_os_native` works and accel.py picks the
+# rust backend. If maturin is unavailable or the build fails, accel.py silently
+# falls back to its numpy reference — the demo still runs.
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "urban_os_native"
+requires-python = ">=3.8"
+description = "Optional Rust acceleration core for the Urban-OS transport step."
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dynamic = ["version"]
+
+[tool.maturin]
+# abi3 wheel -> one artifact works across CPython >= 3.8; no per-version rebuilds.
+features = ["pyo3/extension-module"]

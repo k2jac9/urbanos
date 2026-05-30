@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Urban-OS — Downtown Egress</title>
+  <!-- 100% offline: vendored MapLibre + self-hosted PMTiles. No CDN, no tile server. -->
+  <link rel="stylesheet" href="/static/vendor/maplibre-gl.css" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; overflow: hidden; color: #e2e8f0; }
+    #map { position: absolute; top: 0; bottom: 0; left: 0; width: 68vw; background: #0b1220; }
+    #panel { position: absolute; top: 0; bottom: 0; right: 0; width: 32vw; min-width: 340px;
+             overflow-y: auto; box-sizing: border-box; padding: 16px; background: #0f172a; }
+    h1 { font-size: 18px; margin: 0 0 2px; }
+    h2 { font-size: 12px; margin: 16px 0 6px; color: #94a3b8; font-weight: 600;
+         text-transform: uppercase; letter-spacing: .05em; }
+    .hint { color: #94a3b8; font-size: 13px; }
+    .clock { font-size: 40px; font-weight: 700; line-height: 1; }
+    .clock .u { font-size: 15px; color: #64748b; font-weight: 600; }
+    .controls { margin-top: 10px; }
+    .row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    input[type=range] { flex: 1; }
+    button.act { background: #14233f; color: #bae6fd; border: 1px solid #38bdf8; border-radius: 8px;
+                 padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button.act:disabled { opacity: .5; cursor: default; }
+    button.gh { background: #111c33; color: #e2e8f0; border: 1px solid #1e293b; border-radius: 8px;
+                padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    button.gh[aria-pressed=true] { border-color: #38bdf8; background: #14233f; }
+    #legend { list-style: none; display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 0; padding: 0;
+              font-size: 12px; }
+    #legend li { white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+    .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .insight { font-size: 14px; line-height: 1.5; background: #111c33; border: 1px solid #1e293b;
+               border-left: 4px solid #38bdf8; border-radius: 8px; padding: 12px 14px; margin: 8px 0; }
+    .insight .tag { font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+    .grounded { color: #4ade80; } .fallback { color: #fbbf24; }
+    .ba { display: flex; gap: 10px; }
+    .ba .card { flex: 1; background: #111c33; border: 1px solid #1e293b; border-radius: 8px; padding: 10px; }
+    .ba .card .k { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    .ba .card .v { font-size: 26px; font-weight: 700; }
+    .v.bad { color: #f87171; } .v.good { color: #4ade80; }
+    .save { font-size: 22px; font-weight: 700; color: #4ade80; margin-top: 8px; }
+    .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 6px;
+               border: 2px solid #334155; border-top-color: #38bdf8; border-radius: 50%;
+               animation: spin .8s linear infinite; vertical-align: -1px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { border: 1px solid #b45309; background: #2a1c08; color: #fbbf24; border-radius: 8px;
+           padding: 10px 12px; font-size: 13px; }
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel" role="complementary" aria-label="Simulation controls">
+    <h1>Urban-OS · Downtown Egress</h1>
+    <p class="hint">100% on-device · offline vector map · post-event crowd simulation</p>
+
+    <h2>Clock</h2>
+    <div class="clock"><span id="clock">0</span><span class="u"> min</span> ·
+      <span class="hint" id="phase">pre-event</span></div>
+
+    <div class="controls">
+      <h2>Time</h2>
+      <div class="row">
+        <button class="gh" id="play" type="button">▶ Play</button>
+        <input id="time" type="range" min="0" max="0" step="1" value="0"
+               aria-label="Simulation time frame" />
+      </div>
+
+      <h2>Staggered release lever (minutes)</h2>
+      <div class="row">
+        <input id="release" type="range" min="0" max="20" step="2" value="0"
+               aria-label="Staggered release minutes" />
+        <span id="release-val" style="min-width:42px;text-align:right;font-weight:700">0m</span>
+      </div>
+      <p class="hint">Holding the crowd and releasing it in waves flattens the peak crush.</p>
+
+      <ul id="legend" aria-label="Congestion legend">
+        <li><span class="sw" style="background:#22c55e"></span>≤0.5</li>
+        <li><span class="sw" style="background:#84cc16"></span>~0.75</li>
+        <li><span class="sw" style="background:#f59e0b"></span>~1.0</li>
+        <li><span class="sw" style="background:#ef4444"></span>&gt;1 over capacity</li>
+        <li><span class="sw" style="background:#1e293b;border:1px solid #475569"></span>exit (sink)</li>
+      </ul>
+    </div>
+
+    <h2>Optimize</h2>
+    <div class="row">
+      <button class="act" id="opt-btn" type="button">Find best intervention</button>
+    </div>
+    <div id="opt-out" aria-live="polite"></div>
+
+    <div id="status" class="hint" role="status" aria-live="polite" style="margin-top:12px">Loading…</div>
+  </div>
+
+  <script src="/static/vendor/maplibre-gl.js"></script>
+  <script src="/static/vendor/pmtiles.js"></script>
+  <script>
+    const protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol('pmtiles', protocol.tile);
+    const PMTILES = `pmtiles://${location.origin}/static/toronto.pmtiles`;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    let SCEN = null;      // {nodes, edges, meta}
+    let SIM = null;       // current /simulate payload
+    let FRAME = 0;
+    let playing = false, timer = null;
+    let EVENT_END = 30;
+
+    // Green -> amber -> red by congestion; >1 (over capacity) is full red.
+    function colorFor(c) {
+      if (c >= 1.0) return '#ef4444';
+      if (c >= 0.75) return '#f59e0b';
+      if (c >= 0.5) return '#84cc16';
+      if (c >= 0.2) return '#a3e635';
+      return '#22c55e';
+    }
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      center: [-79.385, 43.646],
+      zoom: 13.6,
+      attributionControl: { compact: true },
+      style: {
+        version: 8,
+        sources: { proto: { type: 'vector', url: PMTILES, attribution: '© OpenStreetMap' } },
+        layers: [
+          { id: 'bg', type: 'background', paint: { 'background-color': '#0b1220' } },
+          { id: 'earth', source: 'proto', 'source-layer': 'earth', type: 'fill', paint: { 'fill-color': '#172033' } },
+          { id: 'water', source: 'proto', 'source-layer': 'water', type: 'fill', paint: { 'fill-color': '#0e2a4a' } },
+          { id: 'landuse', source: 'proto', 'source-layer': 'landuse', type: 'fill', paint: { 'fill-color': '#15301f', 'fill-opacity': 0.6 } },
+          { id: 'roads', source: 'proto', 'source-layer': 'roads', type: 'line',
+            paint: { 'line-color': '#3a4a66', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.4, 14, 1.5, 16, 4] } },
+          { id: 'buildings', source: 'proto', 'source-layer': 'buildings', type: 'fill', minzoom: 13.5, paint: { 'fill-color': '#212d44' } }
+        ]
+      }
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    addEventListener('resize', () => map.resize());
+    const hover = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+
+    function nodeFeatures() {
+      const frame = SIM ? SIM.frames[FRAME] : null;
+      const byId = {};
+      if (frame) frame.nodes.forEach((n) => byId[n.id] = n);
+      return SCEN.nodes.map((nd) => {
+        const sim = byId[nd.id] || { congestion: 0, load: 0, risk: 0 };
+        // log-ish radius from capacity; sinks shown distinctly (square-ish, grey).
+        const r = nd.is_sink ? 7 : Math.max(7, Math.min(26, 6 + Math.log10(nd.capacity + 10) * 4));
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [nd.lng, nd.lat] },
+          properties: {
+            id: nd.id, label: nd.label, is_sink: nd.is_sink, radius: r,
+            congestion: sim.congestion, load: sim.load,
+            color: nd.is_sink ? '#1e293b' : colorFor(sim.congestion)
+          }
+        };
+      });
+    }
+
+    function edgeFeatures() {
+      const pos = {};
+      SCEN.nodes.forEach((n) => pos[n.id] = [n.lng, n.lat]);
+      return SCEN.edges.map((e) => ({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: [pos[e.src], pos[e.dst]] },
+        properties: {}
+      }));
+    }
+
+    function refreshNodes() {
+      if (map.getSource('nodes')) {
+        map.getSource('nodes').setData({ type: 'FeatureCollection', features: nodeFeatures() });
+      }
+      const fr = SIM ? SIM.frames[FRAME] : null;
+      const t = fr ? fr.t : 0;
+      document.getElementById('clock').textContent = t;
+      document.getElementById('phase').textContent =
+        t < EVENT_END ? 'pre-event' : (t < EVENT_END + 25 ? 'crush building' : 'draining');
+    }
+
+    function drawStatic() {
+      map.addSource('edges', { type: 'geojson', data: { type: 'FeatureCollection', features: edgeFeatures() } });
+      map.addLayer({ id: 'edges', source: 'edges', type: 'line',
+        paint: { 'line-color': '#64748b', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 2] } });
+      map.addSource('nodes', { type: 'geojson', data: { type: 'FeatureCollection', features: nodeFeatures() } });
+      map.addLayer({ id: 'nodes', source: 'nodes', type: 'circle',
+        paint: {
+          'circle-radius': ['get', 'radius'],
+          'circle-color': ['get', 'color'],
+          'circle-stroke-width': ['case', ['get', 'is_sink'], 2, 1.5],
+          'circle-stroke-color': ['case', ['get', 'is_sink'], '#475569', '#0b1220']
+        } });
+      map.addLayer({ id: 'nodes-lbl', source: 'nodes', type: 'symbol',
+        layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-offset': [0, 1.4],
+                  'text-anchor': 'top', 'text-allow-overlap': false },
+        paint: { 'text-color': '#e2e8f0', 'text-halo-color': '#0b1220', 'text-halo-width': 1.4 } });
+
+      map.on('mouseenter', 'nodes', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const p = e.features[0].properties;
+        const c = Number(p.congestion);
+        hover.setLngLat(e.lngLat).setHTML(
+          '<b>' + esc(p.label) + '</b><br>congestion ' + c.toFixed(2) + '×' +
+          (c > 1 ? ' <span style="color:#f87171">over capacity</span>' : '') +
+          '<br>load ' + Number(p.load).toLocaleString()).addTo(map);
+      });
+      map.on('mouseleave', 'nodes', () => { map.getCanvas().style.cursor = ''; hover.remove(); });
+    }
+
+    async function loadSim(release) {
+      document.getElementById('status').textContent = 'Simulating (release ' + release + 'm)…';
+      const res = await fetch('/simulate?release_minutes=' + release);
+      SIM = await res.json();
+      const slider = document.getElementById('time');
+      slider.max = String(SIM.frames.length - 1);
+      if (FRAME > SIM.frames.length - 1) FRAME = 0;
+      slider.value = String(FRAME);
+      refreshNodes();
+      const pk = SIM.peak;
+      document.getElementById('status').innerHTML =
+        'Peak congestion <b>' + pk.congestion.toFixed(2) + '×</b> at <b>' + esc(pk.label) +
+        '</b> (t=' + pk.t + 'm).';
+    }
+
+    // Time controls
+    document.getElementById('time').addEventListener('input', (e) => {
+      FRAME = Number(e.target.value); refreshNodes();
+    });
+    function stop() { playing = false; clearInterval(timer); document.getElementById('play').textContent = '▶ Play'; }
+    document.getElementById('play').addEventListener('click', () => {
+      if (!SIM) return;
+      if (playing) { stop(); return; }
+      playing = true; document.getElementById('play').textContent = '⏸ Pause';
+      timer = setInterval(() => {
+        if (!SIM) return;
+        FRAME = (FRAME + 1) % SIM.frames.length;
+        document.getElementById('time').value = String(FRAME);
+        refreshNodes();
+        if (FRAME === SIM.frames.length - 1) stop();
+      }, 120);
+    });
+
+    // Release lever
+    const rel = document.getElementById('release');
+    rel.addEventListener('input', (e) => { document.getElementById('release-val').textContent = e.target.value + 'm'; });
+    rel.addEventListener('change', (e) => { stop(); loadSim(Number(e.target.value)); });
+
+    // Optimize
+    const optBtn = document.getElementById('opt-btn');
+    const optOut = document.getElementById('opt-out');
+    optBtn.addEventListener('click', async () => {
+      optBtn.disabled = true;
+      optOut.innerHTML = '<p class="hint"><span class="spinner"></span>Searching levers + writing the briefing…</p>';
+      try {
+        const d = await (await fetch('/optimize')).json();
+        const bp = d.baseline_peak, sp = d.best_peak;
+        const relMin = d.best_params.release_minutes != null ? d.best_params.release_minutes : 0;
+        optOut.innerHTML =
+          '<div class="insight"><span class="tag ' + (d.grounded ? 'grounded">✓ grounded' : 'fallback">⚠ template') +
+          '</span><br>' + esc(d.insight) + '</div>' +
+          '<div class="ba">' +
+          '<div class="card"><div class="k">Do nothing</div><div class="v bad">' + bp.congestion.toFixed(2) + '×</div>' +
+          '<div class="hint">' + esc(bp.label) + '</div></div>' +
+          '<div class="card"><div class="k">Best (' + relMin + 'm release)</div><div class="v good">' + sp.congestion.toFixed(2) + '×</div>' +
+          '<div class="hint">' + esc(sp.label) + '</div></div></div>' +
+          '<div class="save">Saves ~$' + Math.round(d.savings).toLocaleString() + '</div>';
+        // Reflect the recommended lever on the map.
+        rel.value = String(relMin);
+        document.getElementById('release-val').textContent = relMin + 'm';
+        stop(); loadSim(Number(relMin));
+      } catch (err) {
+        optOut.innerHTML = '<div class="err" role="alert">Optimize failed (' + esc(err.message) + '). The map + slider still work.</div>';
+      } finally {
+        optBtn.disabled = false;
+      }
+    });
+
+    map.on('load', async () => {
+      try {
+        SCEN = await (await fetch('/scenario')).json();
+        EVENT_END = SCEN.meta.event_end;
+        drawStatic();
+        await loadSim(0);
+      } catch (err) {
+        document.getElementById('status').innerHTML =
+          '<div class="err">Failed to load scenario: ' + esc(err.message) + '</div>';
+      }
+    });
+  </script>
+</body>
+</html>

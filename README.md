@@ -12,6 +12,76 @@ or business — with sources and a drafted action. No data leaves the device.
 > served straight from the GX10 box over Tailscale Funnel (read-only). May be offline outside
 > demo windows; to bring it up, see [docs/REMOTE_ACCESS.md](docs/REMOTE_ACCESS.md).
 
+---
+
+# 🟢 Urban-OS — on-device urban-stress OS (flagship: Urban Operations)
+
+The risk app above is now **one lens** on a deeper system. **Urban-OS** is a local
+simulation **kernel** that ingests Toronto open data, runs an urban-dynamics model
+**entirely on the DGX Spark**, and produces a *quantified, cited* intervention. The
+kernel owns a substrate (a road/transit graph) and a time loop; every behaviour is a
+plugin using four operators — `source` (inject forcing), `transport` (move a quantity
+on the graph), `couple` (field→field), `observe` (fields→metrics + a cost term `J`).
+An optimizer searches plugin-declared levers to minimize `J = Σ wₚ·Jₚ`.
+
+**Two plugin axes:** *city adapters* turn a city's data into the substrate; *domain
+lenses* (event surge, economics, safety…) are portable across adapters for free. The
+static risk app becomes the **Safety/Public-Services lens** running on this kernel —
+proving the adapter×lens architecture.
+
+### The killer insight (live, from the model)
+> *"Union Station reaches **2.5× safe capacity 14 minutes after full-time**; a
+> **12-minute staggered release** cuts the peak by **53%** and saves **~$23k** in
+> commuter delay."*
+
+Specific station, timing, lever, dollars — emergent from the dynamics, and **grounded**:
+the figures are computed deterministically and the local model only phrases them, behind
+the same hallucination guard as the risk app (any invented number → deterministic
+fallback). See [ADR-0003](docs/adr/0003-delay-model-and-honest-optimum.md).
+
+### Run it
+```bash
+make urbanos-cli     # run + optimize the downtown egress scenario, print the cited insight
+make urbanos         # offline map + heatmap/time-slider at http://localhost:8000/
+make urbanos-accel   # (optional, on the box) build the Rust core; prints the active backend
+```
+Endpoints: `GET /scenario` (substrate) · `GET /simulate?release_minutes=…` (per-step
+heatmap frames) · `GET /optimize` (before/after + the cited insight) · `GET /health`.
+
+### Architecture
+```
+City of Toronto Open Data (CKAN)  ──►  City adapter (adapters/toronto.py)
+  TTC GTFS · traffic volumes · event permits        builds the road/transit substrate
+        │                                            (offline-deterministic synthetic
+        ▼                                             downtown; real GTFS on the GX10)
+   KERNEL  (urban_os/kernel)                          numpy fields over a networkx graph
+   ┌─ source ─ transport ─ couple ─ observe ─┐  ◄── transport runs on a Rust core
+   │   time loop: integrate at N× real-time   │       (drop-in; numpy fallback, ADR-0004)
+   └──────────────────────────────────────────┘
+        │  lenses: EventSurge (egress wave) + Economic (risk = ρ^2.5, $ delay)
+        ▼
+   Optimizer (optimize.py)  ──►  J-minimizing intervention  ──►  cuOpt seam on the box
+        │
+        ▼
+   Narrator (narrate.py, local model + hallucination guard)  ──►  the cited one-liner
+        │
+        ▼
+   FastAPI + offline MapLibre/PMTiles heatmap + time slider (api.py)
+```
+
+### NVIDIA stack (on the GX10)
+- **cuDF / cuML (RAPIDS)** — `cudf.pandas` drop-in accelerates the CKAN ingest with zero
+  code change; cuML clusters 311 demand.
+- **`nx-cugraph`** — GPU-accelerates the networkx substrate via one env var (no rewrite).
+- **NeMo / Nemotron (local)** — the insight narrator and agentic lenses, fully on-device.
+- **cuOpt** — drops into the optimizer's search seam for the larger joint-lever problem.
+- **Rust core + 128 GB unified memory** — the full graph, live sim state, and the model
+  coexist; the kernel steps at **N× real-time** (measure with `make urbanos-accel`).
+
+Design decisions are recorded in [docs/adr/](docs/adr/).
+
+---
+
 ## Why this shape
 - **Track:** Public Services (frames cleanly as Economic Systems for the investor pitch).
 - **Winning pattern** (mirrors the NYC Spark Hack overall winner): multi-dataset knowledge

@@ -1,0 +1,15 @@
+[package]
+name = "urban_os_native"
+version = "0.1.0"
+edition = "2021"
+description = "Optional Rust acceleration core for the Urban-OS transport step (numpy fallback always present)."
+
+[lib]
+name = "urban_os_native"
+# cdylib: produce a shared library Python can import as `urban_os_native`.
+crate-type = ["cdylib"]
+
+[dependencies]
+# extension-module: link against the Python ABI as an extension, not libpython.
+# abi3-py38: build a single wheel compatible with CPython >= 3.8 (forward-compatible).
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38"] }

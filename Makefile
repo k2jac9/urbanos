@@ -1,4 +1,5 @@
-.PHONY: install install-hooks data serve cli test demo demo-public funnel-off demo-cli demo-data
+.PHONY: install install-hooks data serve cli test demo demo-public funnel-off demo-cli demo-data \
+        urbanos urbanos-cli urbanos-accel
 
 # demo  -> real downtown-Toronto slice (demo_data/), pins land on the offline map.
 # demo-cli/tests -> synthetic, deterministic fixtures/.
@@ -67,3 +68,21 @@ demo-data:
 # Quick deterministic check (synthetic fixtures): prints a populated report and exits.
 demo-cli:
 	DATA_DIR=$(FIXTURES) PYTHONPATH=src $(PYTHON) -m civic_analyst.cli analyze "100 Queen St W"
+
+# ---- Urban-OS: the dynamics-kernel demo (event egress → optimized intervention) ----
+
+# Serve the Urban-OS simulation + offline heatmap/time-slider map at :8000.
+urbanos:
+	@echo "Urban-OS map at http://localhost:8000/ (offline). Endpoints: /scenario /simulate /optimize"
+	PYTHONPATH=src $(PYTHON) -m uvicorn urban_os.api:app --port 8000 --app-dir src
+
+# One-shot CLI: run + optimize the downtown egress scenario, print the cited insight.
+urbanos-cli:
+	PYTHONPATH=src $(PYTHON) -m urban_os.cli
+
+# Build the optional Rust accelerator (aarch64) and report the active backend.
+# Falls back to numpy automatically if this is skipped — the demo never needs it.
+urbanos-accel:
+	$(PYTHON) -m pip install -q maturin
+	$(dir $(PYTHON))maturin develop --release -m native/Cargo.toml
+	@PYTHONPATH=src $(PYTHON) -c "from urban_os.kernel import accel; print('Urban-OS transport backend:', accel.backend_name())"

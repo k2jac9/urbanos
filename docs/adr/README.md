@@ -15,3 +15,4 @@ supersede older ones only when explicitly marked.
 - [ADR-0010](0010-narrator-hallucination-guard.md) — Narrator guard: every figure in the insight traces to the evidence
 - [ADR-0011](0011-honest-peak-independent-of-frame-sampling.md) — Peak congestion is computed over every step, independent of frame_every subsampling
 - [ADR-0012](0012-map-qa-screenshot-harness.md) — Map QA via a Playwright CDP harness (one-shot headless can't render WebGL2+PMTiles)
+- [ADR-0013](0013-dedup-inspections-and-severity-honesty.md) — De-dup inspections by (estId, date) visit + severity honesty (Conditional Pass ≠ adverse; convictions surface as severe)

@@ -25,6 +25,10 @@ class SimResult:
     times: list[float]
     metrics: dict[str, list[float]]      # metric name -> per-step series
     frames: list[dict] = field(default_factory=list)  # {t, load, congestion, risk}
+    # True peak congestion computed over EVERY step during run() — independent of
+    # the ``frame_every`` display subsampling. None for directly-built SimResults
+    # (peak_congestion then falls back to scanning the recorded frames).
+    peak: dict | None = None
 
     @property
     def steps(self) -> int:
@@ -35,7 +39,14 @@ class SimResult:
 
     def peak_congestion(self) -> dict:
         """The node and time of maximum congestion across the whole run — the raw
-        material for the 'specific station, specific timing' insight."""
+        material for the 'specific station, specific timing' insight.
+
+        Uses the peak tracked over ALL steps when available (so the headline
+        number does not change with ``frame_every``); otherwise scans the
+        recorded frames as a backward-compatible fallback.
+        """
+        if self.peak is not None:
+            return dict(self.peak)
         best = {"node": None, "label": None, "congestion": 0.0, "t": 0.0}
         for frame in self.frames:
             cong = frame["congestion"]
@@ -90,6 +101,8 @@ class Simulation:
         times: list[float] = []
         metrics: dict[str, list[float]] = {}
         frames: list[dict] = []
+        # True peak congestion over EVERY step (not just recorded frames).
+        peak_best = {"node": None, "label": None, "congestion": 0.0, "t": 0.0}
 
         for step in range(steps):
             t = step * self.dt
@@ -118,6 +131,19 @@ class Simulation:
                 for k, v in lens.observe(state, t).items():
                     metrics.setdefault(k, []).append(float(v))
 
+            # Track the honest peak congestion at full resolution, so the headline
+            # number is invariant to the frame_every payload-subsampling knob.
+            cong = state.fields["congestion"]
+            ci = int(np.argmax(cong))
+            cval = float(cong[ci])
+            if cval > peak_best["congestion"]:
+                peak_best = {
+                    "node": sub.ids[ci],
+                    "label": sub.labels[ci],
+                    "congestion": cval,
+                    "t": t,
+                }
+
             if record_frames and step % frame_every == 0:
                 frames.append(
                     {
@@ -136,4 +162,5 @@ class Simulation:
             times=times,
             metrics=metrics,
             frames=frames,
+            peak=peak_best,
         )

@@ -13,3 +13,4 @@ supersede older ones only when explicitly marked.
 - [ADR-0008](0008-urban-os-ui.md) — Offline congestion/risk heatmap over the vendored MapLibre/PMTiles map
 - [ADR-0009](0009-rust-accelerator-benchmark.md) — Measured Rust↔numpy parity + speedup; boundary-marshalling caveat
 - [ADR-0010](0010-narrator-hallucination-guard.md) — Narrator guard: every figure in the insight traces to the evidence
+- [ADR-0011](0011-honest-peak-independent-of-frame-sampling.md) — Peak congestion is computed over every step, independent of frame_every subsampling

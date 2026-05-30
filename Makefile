@@ -1,5 +1,5 @@
 .PHONY: install install-hooks data serve cli test demo demo-public funnel-off demo-cli demo-data \
-        urbanos urbanos-cli urbanos-accel urbanos-bench
+        urbanos urbanos-cli urbanos-accel urbanos-bench screenshot
 
 # demo  -> real downtown-Toronto slice (demo_data/), pins land on the offline map.
 # demo-cli/tests -> synthetic, deterministic fixtures/.
@@ -92,3 +92,10 @@ urbanos-accel:
 # and degrades to a numpy-only baseline when the rust core is absent.
 urbanos-bench:
 	PYTHONPATH=src $(PYTHON) scripts/bench_urbanos_accel.py
+
+# Render a map page to a PNG, waiting until the WebGL+PMTiles map has drawn (one-
+# shot headless can't — see ADR-0012). Needs Playwright + chromium; run on the
+# box (real GPU) for a faithful render. Usage:
+#   make screenshot URL=http://localhost:8001/ OUT=/tmp/map.png
+screenshot:
+	$(PYTHON) scripts/screenshot_map.py "$(URL)" "$(OUT)"

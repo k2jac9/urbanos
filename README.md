@@ -8,6 +8,10 @@ then a supervisor agent + specialized sub-agents (running on a **local Nemotron 
 on the ASUS Ascent GX10 / NVIDIA GB10) produce an **actionable risk read** for any address
 or business — with sources and a drafted action. No data leaves the device.
 
+> **🔴 Live demo (during the event):** **https://gx10-4428.taila9fe06.ts.net** — the real app
+> served straight from the GX10 box over Tailscale Funnel (read-only). May be offline outside
+> demo windows; to bring it up, see [docs/REMOTE_ACCESS.md](docs/REMOTE_ACCESS.md).
+
 ## Why this shape
 - **Track:** Public Services (frames cleanly as Economic Systems for the investor pitch).
 - **Winning pattern** (mirrors the NYC Spark Hack overall winner): multi-dataset knowledge

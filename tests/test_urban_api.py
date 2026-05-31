@@ -35,7 +35,7 @@ def test_health_ok_and_counts_positive():
 def test_index_serves_html():
     r = client.get("/")
     assert r.status_code == 200
-    assert "Urban-OS" in r.text
+    assert "Urban OS" in r.text  # the unified shell (or classic fallback) wordmark
     assert "maplibre-gl" in r.text  # offline vendored asset, not a CDN
 
 

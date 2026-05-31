@@ -1,0 +1,45 @@
+/* ===== Urban-OS shared design tokens — one source of truth for color, type,
+   radius, rhythm. Consumed by every page (civic map :8000 + urban_os :8001 +
+   the unified shell) so the suite is visually coherent by construction.
+
+   100% offline: NO @import, NO web-font CDN — tokens only. Loaded via
+   <link href="/static/vendor/tokens.css"> BEFORE each page's inline <style>,
+   so page rules can override but inherit these defaults.
+
+   Two themes share ONE system: the conservative palette lives in :root; the
+   cyber theme (html[data-theme="cyber"]) re-points the SAME tokens, so every
+   component rule keeps working unchanged. Glow/texture effects that aren't
+   expressible as plain color tokens stay in each page's own <style>. ===== */
+:root {
+  --map-bg:#0b1220; --surface:#0f172a; --surface-2:#111c33; --surface-sel:#14233f;
+  --text:#e2e8f0; --text-strong:#f1f5f9; --text-soft:#cbd5e1;
+  --text-muted:#94a3b8; --text-dim:#64748b;
+  --border:#334155; --border-2:#1e293b; --border-hover:#64748b;
+  --accent:#38bdf8; --accent-text:#bae6fd; --accent-link:#93c5fd;
+  --risk-high:#f87171; --risk-medium:#fbbf24; --risk-low:#facc15; --risk-none:#4ade80;
+  --verify:#4ade80; --verify-border:#14532d; --verify-bg-idle:transparent;
+  --verify-bg:#14532d; --verify-text:#dcfce7;
+  --ev-permit:#60a5fa; --ev-permit-kind:#93c5fd; --ev-inspection:#f87171;
+  --ev-inspection-kind:#fca5a5; --ev-licence:#475569;
+  --warn-border:#b45309; --warn-bg:#2a1c08; --warn-text:#fbbf24;
+  /* type scale */
+  --fs-xs:10px; --fs-sm:11px; --fs-cap:12px; --fs-body:13px; --fs-scale:16px;
+  --fs-h1:18px; --fs-addr:22px; --fs-score:44px;
+  /* radius + rhythm */
+  --r-sm:4px; --r:6px; --r-lg:8px; --r-xl:10px; --pill:999px; --pad:16px;
+  --num: ui-monospace, "Cascadia Code", monospace;
+}
+
+/* ===== Cyber theme = re-point the tokens (the system does the rest). The
+   glow/texture effects that go with this theme live in each page's <style>. ===== */
+html[data-theme="cyber"] {
+  --map-bg:#05080f; --surface:#05080f; --surface-2:#0a1422; --surface-sel:#07223a;
+  --text:#bfefff; --text-strong:#eaffff; --text-soft:#bfefff;
+  --text-muted:#7fb6c9; --text-dim:#7fb6c9;
+  --border:#00e5ff33; --border-2:#00e5ff33; --border-hover:#00e5ff;
+  --accent:#00e5ff; --accent-text:#aef6ff; --accent-link:#aef6ff;
+  --risk-high:#ff3b6b; --risk-medium:#ffb020; --risk-low:#ffe34d; --risk-none:#2bff88;
+  --verify:#00e5ff; --verify-border:#00e5ff; --verify-bg-idle:#00e5ff14;
+  --verify-bg:#00e5ff26; --verify-text:#eaffff;
+  --ev-permit:#00e5ff; --ev-permit-kind:#aef6ff; --ev-inspection:#ff3b6b;
+}

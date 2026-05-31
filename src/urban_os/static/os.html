@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Urban OS — One city. Every lens.</title>
+  <!-- 100% offline: vendored MapLibre + self-hosted PMTiles + shared design tokens. -->
+  <link rel="stylesheet" href="/static/vendor/tokens.css" />
+  <link rel="stylesheet" href="/static/vendor/maplibre-gl.css" />
+  <style>
+    :root { --accent-2:#22d3ee; --os-boot-bg:#05070d; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif;
+      color: var(--text); background: var(--map-bg); overflow: hidden; }
+    #map { position: absolute; inset: 0; background: var(--map-bg); }
+
+    /* Top bar — wordmark + live status. */
+    #topbar { position: absolute; top: 0; left: 0; right: 0; height: 52px; z-index: 5;
+      display: flex; align-items: center; gap: 16px; padding: 0 18px;
+      background: linear-gradient(180deg, rgba(5,8,15,.92), rgba(5,8,15,0));
+      pointer-events: none; }
+    #wordmark { font-weight: 800; letter-spacing: .18em; font-size: 16px;
+      color: var(--text-strong); text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent); }
+    #wordmark .os { color: var(--accent); }
+    #scenario-tag { font-size: 12px; color: var(--text-soft); }
+    #status { margin-left: auto; font-size: 12px; color: var(--text-muted);
+      background: rgba(15,23,42,.7); border: 1px solid var(--border-2); border-radius: var(--pill);
+      padding: 4px 12px; pointer-events: auto; }
+    #status b { color: var(--accent-text); }
+
+    /* Lens dock — left rail (Hick's law: 4 lenses). */
+    #dock { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); z-index: 6;
+      display: flex; flex-direction: column; gap: 10px; }
+    .lens { width: 78px; padding: 12px 6px; border-radius: var(--r-xl); cursor: pointer;
+      background: rgba(15,23,42,.72); border: 1px solid var(--border-2); color: var(--text-muted);
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+      backdrop-filter: blur(6px); transition: all .18s ease; }
+    .lens .ic { font-size: 22px; line-height: 1; }
+    .lens:hover { border-color: var(--border-hover); color: var(--text-soft); }
+    .lens[aria-current="true"] { color: var(--text-strong); border-color: var(--accent);
+      background: var(--surface-sel); box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+    /* Side panel — swaps per lens (<400ms, Doherty). */
+    #panel { position: absolute; top: 64px; right: 14px; bottom: 14px; width: 34vw;
+      min-width: 360px; max-width: 460px; z-index: 6; overflow-y: auto;
+      background: rgba(15,23,42,.82); border: 1px solid var(--border-2); border-radius: var(--r-xl);
+      padding: 16px 18px; backdrop-filter: blur(10px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+    #panel.swap { animation: swap .28s ease; }
+    @keyframes swap { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+    .ptitle { font-size: 18px; font-weight: 800; margin: 0 0 2px; color: var(--text-strong); }
+    .psub { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
+    h2 { font-size: 12px; margin: 16px 0 6px; color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; }
+    .hint { color: var(--text-muted); font-size: 13px; }
+    .num { font-variant-numeric: tabular-nums; font-family: var(--num); }
+
+    /* The cross-domain "every lens" meters. */
+    .meters { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+    .meter { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); padding: 10px 12px; }
+    .meter .k { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); display: flex; justify-content: space-between; }
+    .meter .v { font-size: 20px; font-weight: 800; margin-top: 2px; }
+    .bar { height: 6px; border-radius: var(--pill); background: #0b1626; margin-top: 8px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; border-radius: var(--pill); transition: width .5s cubic-bezier(.2,.7,.3,1); }
+    .bar.transit > span { background: var(--risk-high); }
+    .bar.safety > span { background: var(--accent); }
+    .bar.business > span { background: var(--risk-none); }
+    .combined { margin-top: 12px; padding: 14px; border-radius: var(--r-lg);
+      background: linear-gradient(135deg, var(--surface-sel), var(--surface-2));
+      border: 1px solid var(--accent); text-align: center; }
+    .combined .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); }
+    .combined .v { font-size: 38px; font-weight: 800; color: var(--risk-none);
+      text-shadow: 0 0 18px color-mix(in srgb, var(--risk-none) 45%, transparent); }
+
+    /* Levers. */
+    .lever { margin: 10px 0; }
+    .lever label { font-size: 12px; color: var(--text-soft); display: flex; justify-content: space-between; }
+    .lever input[type=range] { width: 100%; }
+    .hero-lever { background: var(--surface-2); border: 1px solid var(--accent); border-radius: var(--r-lg);
+      padding: 12px 14px; margin: 12px 0; box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+    .hero-lever .lh { font-weight: 700; color: var(--accent-text); font-size: 13px; }
+
+    button.act { background: var(--surface-sel); color: var(--accent-text); border: 1px solid var(--accent);
+      border-radius: var(--r-lg); padding: 9px 14px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+    button.act:disabled { opacity: .5; cursor: default; }
+    button.gh { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-2);
+      border-radius: var(--r); padding: 6px 11px; font-size: 12px; cursor: pointer; }
+    button.gh[aria-pressed=true] { border-color: var(--accent); background: var(--surface-sel); color: var(--accent-text); }
+    .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+
+    /* Insight + before/after (Flow / climax). */
+    .insight { font-size: 14px; line-height: 1.5; background: var(--surface-2); border: 1px solid var(--border-2);
+      border-left: 4px solid var(--accent); border-radius: var(--r-lg); padding: 12px 14px; margin: 10px 0; }
+    .insight .tag { font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+    .grounded { color: var(--verify); } .fallback { color: var(--risk-medium); }
+    .ba { display: flex; gap: 10px; margin: 8px 0; }
+    .ba .card { flex: 1; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); padding: 10px; text-align: center; }
+    .ba .card .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+    .ba .card .v { font-size: 26px; font-weight: 800; }
+    .v.bad { color: var(--risk-high); } .v.good { color: var(--risk-none); }
+    .breakdown { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .breakdown td { padding: 3px 6px; border-bottom: 1px solid var(--border-2); }
+    .breakdown td:last-child { text-align: right; font-family: var(--num); }
+    .breakdown tr.total td { font-weight: 800; border-top: 1px solid var(--border); border-bottom: none; }
+
+    /* Safety lens — address list + analysis + click-to-verify (civic). */
+    #addrlist { list-style: none; margin: 0; padding: 0; max-height: 30vh; overflow-y: auto; }
+    #addrlist li { margin: 2px 0; }
+    #addrlist button { width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--border-2);
+      color: var(--text); border-radius: var(--r); padding: 6px 9px; font-size: 12px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+    #addrlist button[aria-current=true] { border-color: var(--accent); background: var(--surface-sel); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .b-high { color: var(--risk-high); } .b-medium { color: var(--risk-medium); }
+    .b-low { color: var(--risk-low); } .b-none { color: var(--risk-none); }
+    .bg-high { background: var(--risk-high); } .bg-medium { background: var(--risk-medium); }
+    .bg-low { background: var(--risk-low); } .bg-none { background: var(--risk-none); }
+    .idxrow { display: flex; gap: 10px; margin: 8px 0; }
+    .idx { flex: 1; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); padding: 10px; }
+    .idx-h { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+    .idx-score { font-size: 30px; font-weight: 800; font-family: var(--num); }
+    .idx-score .scale { font-size: 13px; color: var(--text-dim); }
+    #claims { list-style: none; padding: 0; margin: 6px 0; font-size: 13px; }
+    #claims li { padding: 5px 0; border-bottom: 1px solid var(--border-2); }
+    .verify { background: var(--verify-bg-idle); color: var(--verify); border: 1px solid var(--verify-border);
+      border-radius: var(--r-sm); font-size: 11px; padding: 1px 7px; cursor: pointer; margin-left: 4px; }
+    .srcline { font-family: var(--num); font-size: 11px; color: var(--accent-text); margin-top: 4px;
+      background: var(--surface-sel); border-radius: var(--r-sm); padding: 6px 8px; }
+    .err { border: 1px solid var(--warn-border); background: var(--warn-bg); color: var(--warn-text);
+      border-radius: var(--r-lg); padding: 10px 12px; font-size: 13px; }
+    .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 6px;
+      border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .8s linear infinite; vertical-align: -1px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Climax intensity ramp uses html[data-theme="cyber"] (from tokens.css). */
+    html[data-theme="cyber"] #map { filter: saturate(1.15) contrast(1.05); }
+  </style>
+</head>
+<body>
+  <main id="map" aria-label="Toronto city canvas"></main>
+
+  <div id="topbar">
+    <span id="wordmark">URBAN <span class="os">OS</span></span>
+    <span id="scenario-tag" class="num"></span>
+    <span id="status">booting…</span>
+  </div>
+
+  <nav id="dock" aria-label="Lenses">
+    <button class="lens" data-lens="city"    type="button"><span class="ic">🏙️</span>City</button>
+    <button class="lens" data-lens="safety"  type="button"><span class="ic">🛡️</span>Safety</button>
+    <button class="lens" data-lens="flow"    type="button"><span class="ic">🌊</span>Flow</button>
+    <button class="lens" data-lens="economy" type="button"><span class="ic">💵</span>Economy</button>
+  </nav>
+
+  <aside id="panel" role="complementary" aria-live="polite"></aside>
+
+  <script src="/static/vendor/maplibre-gl.js"></script>
+  <script src="/static/vendor/pmtiles.js"></script>
+  <script src="/static/os-boot.js"></script>
+  <script>
+  "use strict";
+  const protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile);
+  const PMTILES = `pmtiles://${location.origin}/static/toronto.pmtiles`;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const mult2 = (x) => Number(x || 0).toFixed(2);
+  const dK = (x) => '$' + Math.round(Number(x || 0) / 1000) + 'k';
+  const css = (v, f) => (getComputedStyle(document.documentElement).getPropertyValue(v).trim() || f);
+
+  // ---- shared state ----
+  let SCEN = null;        // urban_os /scenario
+  let SIM = null;         // current /simulate payload
+  let ADDRS = [];         // /civic/addresses
+  let FRAME = 0, playing = false, timer = null;
+  let RELEASE = 0, SHELTER = 0;
+  let LENS = null;
+  let BASELINE = null;    // /lenses at (0,0) — the do-nothing reference for the ripple
+
+  const colorFor = (c) => c >= 1 ? css('--risk-high','#ef4444') : c >= .75 ? css('--risk-medium','#f59e0b')
+    : c >= .5 ? '#84cc16' : c >= .2 ? '#a3e635' : css('--risk-none','#22c55e');
+  const bandOf = (r) => r >= .67 ? 'high' : r >= .34 ? 'medium' : r > 0 ? 'low' : 'none';
+  const worstBand = (a) => bandOf(Math.max(+(a.risk_safety||0), +(a.risk_activity||0)));
+
+  // ---- the one map (persistent canvas) ----
+  const map = new maplibregl.Map({
+    container: 'map', center: [-79.398, 43.6455], zoom: 12.7, pitch: 0, bearing: 0,
+    attributionControl: { compact: true },
+    style: { version: 8,
+      glyphs: `${location.origin}/static/fonts/{fontstack}/{range}.pbf`,
+      sources: { proto: { type: 'vector', url: PMTILES, attribution: '© OpenStreetMap' } },
+      layers: [
+        { id:'bg', type:'background', paint:{ 'background-color': css('--map-bg','#0b1220') } },
+        { id:'earth', source:'proto','source-layer':'earth', type:'fill', paint:{ 'fill-color':'#172033' } },
+        { id:'water', source:'proto','source-layer':'water', type:'fill', paint:{ 'fill-color':'#0e2a4a' } },
+        { id:'landuse', source:'proto','source-layer':'landuse', type:'fill', paint:{ 'fill-color':'#15301f','fill-opacity':.55 } },
+        { id:'roads', source:'proto','source-layer':'roads', type:'line',
+          paint:{ 'line-color':'#3a4a66','line-width':['interpolate',['linear'],['zoom'],10,.4,14,1.5,16,4] } },
+        { id:'buildings', source:'proto','source-layer':'buildings', type:'fill', minzoom:13.5, paint:{ 'fill-color':'#212d44' } },
+        { id:'buildings-3d', source:'proto','source-layer':'buildings', type:'fill-extrusion', minzoom:13,
+          layout:{ visibility:'none' },
+          paint:{ 'fill-extrusion-color':'#1b2740',
+            'fill-extrusion-height':['coalesce',['get','height'],12],
+            'fill-extrusion-base':['coalesce',['get','min_height'],0],
+            'fill-extrusion-opacity':.85 } }
+      ] }
+  });
+  map.addControl(new maplibregl.NavigationControl());
+  addEventListener('resize', () => map.resize());
+  const hover = new maplibregl.Popup({ closeButton:false, closeOnClick:false, offset:12 });
+
+  // ---- urban_os substrate features ----
+  function osNodes() {
+    const fr = SIM ? SIM.frames[FRAME] : null, byId = {};
+    if (fr) fr.nodes.forEach(n => byId[n.id] = n);
+    return (SCEN ? SCEN.nodes : []).map(nd => {
+      const s = byId[nd.id] || { congestion:0, load:0, risk:0 };
+      const base = nd.is_sink ? 7 : Math.max(7, Math.min(26, 6 + Math.log10(nd.capacity + 10) * 4));
+      const r = nd.group === 'venue' ? base + 3 : base;
+      const w = nd.is_sink ? 0 : Math.max(0, Math.min(1.5, s.congestion || 0));
+      return { type:'Feature', geometry:{ type:'Point', coordinates:[nd.lng, nd.lat] },
+        properties:{ id:nd.id, label:nd.label, is_sink:nd.is_sink, group:nd.group, radius:r,
+          congestion:s.congestion, load:s.load, weight:w, color: nd.is_sink ? '#1e293b' : colorFor(s.congestion) } };
+    });
+  }
+  function osEdges() {
+    const pos = {}; (SCEN ? SCEN.nodes : []).forEach(n => pos[n.id] = [n.lng, n.lat]);
+    return (SCEN ? SCEN.edges : []).map(e => ({ type:'Feature',
+      geometry:{ type:'LineString', coordinates:[pos[e.src], pos[e.dst]] }, properties:{} }));
+  }
+  function civPins() {
+    return ADDRS.map(a => ({ type:'Feature', geometry:{ type:'Point', coordinates:[a.lng, a.lat] },
+      properties:{ label:a.label, band: worstBand(a),
+        color: css('--risk-' + worstBand(a), '#888'),
+        score: Math.max(+(a.risk_safety||0), +(a.risk_activity||0)) } }));
+  }
+  function setData(id, feats) { const s = map.getSource(id); if (s) s.setData({ type:'FeatureCollection', features:feats }); }
+  function vis(id, on) { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); }
+
+  function drawLayers() {
+    map.addSource('os-edges', { type:'geojson', data:{ type:'FeatureCollection', features:osEdges() } });
+    map.addLayer({ id:'os-edges', source:'os-edges', type:'line',
+      paint:{ 'line-color':'#64748b','line-width':2,'line-opacity':.5,'line-dasharray':[2,2] } });
+    map.addSource('os-nodes', { type:'geojson', data:{ type:'FeatureCollection', features:osNodes() } });
+    map.addLayer({ id:'os-heatmap', source:'os-nodes', type:'heatmap',
+      paint:{ 'heatmap-weight':['interpolate',['linear'],['get','weight'],0,0,1,.7,1.5,1],
+        'heatmap-intensity':['interpolate',['linear'],['zoom'],11,.8,15,2.2],
+        'heatmap-radius':['interpolate',['linear'],['zoom'],11,22,15,60],'heatmap-opacity':.78,
+        'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(11,18,32,0)',.2,'#22c55e',.45,'#84cc16',.7,'#f59e0b',1,'#ef4444'] } });
+    map.addLayer({ id:'os-nodes', source:'os-nodes', type:'circle',
+      paint:{ 'circle-radius':['get','radius'],'circle-color':['get','color'],
+        'circle-stroke-width':['match',['get','group'],'venue',3,'fanzone',3,'exit',2,1.5],
+        'circle-stroke-color':['match',['get','group'],'venue',css('--risk-medium','#fbbf24'),'fanzone','#f472b6','exit','#475569','#0b1220'] } });
+    map.addLayer({ id:'os-nodes-lbl', source:'os-nodes', type:'symbol',
+      layout:{ 'text-field':['get','label'],'text-font':['OpenSans'],'text-size':11,'text-offset':[0,1.4],'text-anchor':'top','text-allow-overlap':false },
+      paint:{ 'text-color':css('--text','#e2e8f0'),'text-halo-color':'#0b1220','text-halo-width':1.4 } });
+
+    map.addSource('civ', { type:'geojson', data:{ type:'FeatureCollection', features:civPins() } });
+    map.addLayer({ id:'civ-pins', source:'civ', type:'circle', layout:{ visibility:'none' },
+      paint:{ 'circle-radius':['interpolate',['linear'],['get','score'],0,3,1,8],
+        'circle-color':['get','color'],'circle-opacity':.9,'circle-stroke-width':1,'circle-stroke-color':'#0b1220' } });
+    map.addSource('civ-sel', { type:'geojson', data:{ type:'FeatureCollection', features:[] } });
+    map.addLayer({ id:'civ-sel', source:'civ-sel', type:'circle',
+      paint:{ 'circle-radius':12,'circle-color':'rgba(0,0,0,0)','circle-stroke-width':3,'circle-stroke-color':css('--accent','#38bdf8') } });
+
+    map.on('mouseenter', 'os-nodes', (e) => { map.getCanvas().style.cursor='pointer';
+      const p = e.features[0].properties, c = Number(p.congestion);
+      hover.setLngLat(e.lngLat).setHTML('<b>'+esc(p.label)+'</b><br>congestion '+mult2(c)+'×'+(c>1?' over capacity':'')).addTo(map); });
+    map.on('mouseleave', 'os-nodes', () => { map.getCanvas().style.cursor=''; hover.remove(); });
+    map.on('click', 'civ-pins', (e) => { analyzeAddress(e.features[0].properties.label); });
+    map.on('mouseenter', 'civ-pins', (e) => { map.getCanvas().style.cursor='pointer';
+      const p = e.features[0].properties;
+      hover.setLngLat(e.lngLat).setHTML('<b>'+esc(p.label)+'</b><br>risk '+mult2(p.score)+' · '+esc(p.band)).addTo(map); });
+    map.on('mouseleave', 'civ-pins', () => { map.getCanvas().style.cursor=''; hover.remove(); });
+  }
+  function refreshOS() { setData('os-nodes', osNodes()); }
+
+  // ---- data loaders ----
+  async function loadSim(rel, shel) {
+    RELEASE = Number(rel); SHELTER = shel == null ? SHELTER : Number(shel);
+    setStatus('Simulating release <b>'+RELEASE+'m</b> · shelter <b>'+Math.round(SHELTER*100)+'%</b>…');
+    SIM = await (await fetch('/simulate?release_minutes='+RELEASE+'&shelter_fraction='+SHELTER)).json();
+    if (FRAME > SIM.frames.length-1) FRAME = 0;
+    refreshOS();
+    const pk = SIM.peak;
+    setStatus('Peak <b>'+mult2(pk.congestion)+'×</b> at <b>'+esc(pk.label)+'</b> (t='+pk.t+'m)');
+    return SIM;
+  }
+  async function lensesAt(rel, shel) {
+    try { return await (await fetch('/lenses?release_minutes='+rel+'&shelter_fraction='+shel)).json(); }
+    catch (e) { return null; }
+  }
+  const setStatus = (h) => { document.getElementById('status').innerHTML = h; };
+
+  // ============================ LENSES ============================
+  const panel = document.getElementById('panel');
+  function paint(html) { panel.innerHTML = html; panel.classList.remove('swap'); void panel.offsetWidth; panel.classList.add('swap'); }
+
+  const LENSES = {
+    // ---- CITY: the overview + the "one lever, every lens" climax ----
+    city: {
+      enter() {
+        vis('os-edges', true); vis('os-heatmap', true); vis('os-nodes', true); vis('os-nodes-lbl', true);
+        vis('civ-pins', false);
+        map.easeTo({ center:[-79.398, 43.6455], zoom:12.7, pitch:0, bearing:0, duration:700 });
+        const evs = (SCEN.meta.events || []);
+        paint(
+          '<div class="ptitle">One city. Every lens.</div>'+
+          '<p class="psub">'+evs.length+' concurrent events · <span class="num">'+Math.round(SCEN.meta.crowd_size).toLocaleString()+'</span> people into the Union ↔ Exhibition GO corridor.</p>'+
+          '<div class="hero-lever"><div class="lh">⚡ One lever — staggered release</div>'+
+            '<div class="lever"><label>Release <span id="rv" class="num">'+RELEASE+'m</span></label>'+
+            '<input id="rel" type="range" min="0" max="20" step="2" value="'+RELEASE+'"></div>'+
+            '<div class="lever"><label>Shelter coverage <span id="sv" class="num">'+Math.round(SHELTER*100)+'%</span></label>'+
+            '<input id="shel" type="range" min="0" max="1" step="0.2" value="'+SHELTER+'"></div>'+
+          '</div>'+
+          '<div class="meters" id="meters">'+meterHTML('transit','Transit crush (Union ×)','—')+
+            meterHTML('safety','Public-safety exposure','—')+meterHTML('business','Local business lost','—')+'</div>'+
+          '<div class="combined"><div class="k">Combined benefit — one lever, every lens</div><div class="v num" id="combined">—</div></div>'+
+          '<div class="row"><button class="act" id="opt">✨ Find the best intervention</button></div>'+
+          '<p class="hint">Drag the lever: the city calms and all three lenses move together. “Find the best” runs the optimizer and lights the room.</p>'
+        );
+        document.getElementById('rel').addEventListener('input', e => document.getElementById('rv').textContent = e.target.value+'m');
+        document.getElementById('shel').addEventListener('input', e => document.getElementById('sv').textContent = Math.round(e.target.value*100)+'%');
+        document.getElementById('rel').addEventListener('change', e => rippleTo(Number(e.target.value), SHELTER));
+        document.getElementById('shel').addEventListener('change', e => rippleTo(RELEASE, Number(e.target.value)));
+        document.getElementById('opt').addEventListener('click', runOptimize);
+        rippleTo(RELEASE, SHELTER, true);
+      }
+    },
+    // ---- SAFETY: civic address risk + grounded click-to-verify ----
+    safety: {
+      enter() {
+        vis('os-edges', false); vis('os-heatmap', false); vis('os-nodes', false); vis('os-nodes-lbl', false);
+        vis('civ-pins', true);
+        map.easeTo({ center:[-79.384, 43.652], zoom:13.4, pitch:0, duration:700 });
+        const rows = ADDRS.slice().sort((a,b)=>(Math.max(b.risk_safety,b.risk_activity))-(Math.max(a.risk_safety,a.risk_activity))).slice(0,40)
+          .map(a => { const b = worstBand(a);
+            return '<li><button type="button" data-label="'+esc(a.label)+'"><span class="dot bg-'+b+'"></span>'+
+              '<span style="flex:1">'+esc(a.label)+'</span><span class="num b-'+b+'">'+Math.max(a.risk_safety,a.risk_activity).toFixed(2)+'</span></button></li>'; }).join('');
+        paint(
+          '<div class="ptitle">🛡️ Safety lens</div>'+
+          '<p class="psub">The civic-risk app, as a kernel lens — address risk over 3 fused City of Toronto datasets. Every number is grounded; tap ✓ verify.</p>'+
+          '<div class="row"><button class="gh" data-label="500 Bloor St W">★ 500 Bloor St W (3-dataset hero)</button></div>'+
+          '<h2>Highest-risk addresses</h2><ul id="addrlist">'+rows+'</ul>'+
+          '<div id="detail"><p class="hint">Pick a pin or address for its grounded risk read.</p></div>'
+        );
+        panel.querySelector('#addrlist').addEventListener('click', e => { const b = e.target.closest('button[data-label]'); if (b) analyzeAddress(b.dataset.label); });
+        panel.querySelectorAll('.gh[data-label]').forEach(b => b.addEventListener('click', () => analyzeAddress(b.dataset.label)));
+      }
+    },
+    // ---- FLOW: the egress simulation + levers + optimizer ----
+    flow: {
+      enter() {
+        vis('os-edges', true); vis('os-heatmap', true); vis('os-nodes', true); vis('os-nodes-lbl', true);
+        vis('civ-pins', false);
+        map.easeTo({ center:[-79.398, 43.6455], zoom:12.7, duration:700 });
+        paint(
+          '<div class="ptitle">🌊 Flow lens</div>'+
+          '<p class="psub">The FIFA convergence crunch — four venues empty at once. Scrub time; pull the levers.</p>'+
+          '<div class="row"><button class="gh" id="play">▶ Play</button>'+
+            '<input id="time" type="range" min="0" max="'+((SIM?SIM.frames.length:1)-1)+'" value="'+FRAME+'" style="flex:1"></div>'+
+          '<div class="lever"><label>Staggered release <span id="rv" class="num">'+RELEASE+'m</span></label>'+
+            '<input id="rel" type="range" min="0" max="20" step="2" value="'+RELEASE+'"></div>'+
+          '<div class="lever"><label>Shelter coverage <span id="sv" class="num">'+Math.round(SHELTER*100)+'%</span></label>'+
+            '<input id="shel" type="range" min="0" max="1" step="0.2" value="'+SHELTER+'"></div>'+
+          '<h2>Live cost (objective J)</h2><table class="breakdown"><tbody id="bd"></tbody></table>'+
+          '<div class="row"><button class="act" id="opt">✨ Find the best intervention</button></div>'+
+          '<div id="opt-out"></div>'
+        );
+        const t = document.getElementById('time');
+        t.addEventListener('input', e => { FRAME = Number(e.target.value); refreshOS(); });
+        document.getElementById('play').addEventListener('click', togglePlay);
+        document.getElementById('rel').addEventListener('input', e => document.getElementById('rv').textContent = e.target.value+'m');
+        document.getElementById('shel').addEventListener('input', e => document.getElementById('sv').textContent = Math.round(e.target.value*100)+'%');
+        document.getElementById('rel').addEventListener('change', async e => { stopPlay(); await loadSim(Number(e.target.value), SHELTER); renderBreakdown(); resizeTime(); });
+        document.getElementById('shel').addEventListener('change', async e => { stopPlay(); await loadSim(RELEASE, Number(e.target.value)); renderBreakdown(); });
+        document.getElementById('opt').addEventListener('click', runOptimize);
+        renderBreakdown();
+      }
+    },
+    // ---- ECONOMY: business + the J split ----
+    economy: {
+      enter() {
+        vis('os-edges', true); vis('os-heatmap', true); vis('os-nodes', true); vis('os-nodes-lbl', true);
+        vis('civ-pins', false);
+        map.easeTo({ center:[-79.392, 43.646], zoom:12.9, duration:700 });
+        paint('<div class="ptitle">💵 Economy lens</div>'+
+          '<p class="psub">The crush isn’t just transit — it kills local trade. The same lever recovers it.</p>'+
+          '<div id="econ"><p class="hint"><span class="spinner"></span>Scoring local business…</p></div>');
+        lensesAt(RELEASE, SHELTER).then(l => {
+          const base = BASELINE || l;
+          if (!l) { document.getElementById('econ').innerHTML = '<div class="err">Economy data unavailable.</div>'; return; }
+          document.getElementById('econ').innerHTML =
+            '<div class="meters">'+
+              meterHTML('business','Local business lost (now)', dK(l.business.lost))+
+              meterHTML('safety','Public-safety exposure (now)', dK(l.safety.cost))+'</div>'+
+            '<div class="combined"><div class="k">Recovered vs. do-nothing</div><div class="v num">'+dK(l.business.recovered_vs_baseline)+'</div></div>'+
+            '<p class="hint">Business lost falls as the crowd is spread — the optimizer prices this into the same release lever. Pull it in City or Flow and watch this move.</p>';
+          setMeter('business', l.business.lost, base.business.lost);
+          setMeter('safety', l.safety.cost, base.safety.cost);
+        });
+      }
+    }
+  };
+
+  function meterHTML(kind, label, val) {
+    return '<div class="meter"><div class="k"><span>'+label+'</span></div>'+
+      '<div class="v num" id="m-'+kind+'">'+val+'</div><div class="bar '+kind+'"><span id="b-'+kind+'" style="width:0%"></span></div></div>';
+  }
+  function setMeter(kind, val, ref) {
+    const bar = document.getElementById('b-'+kind);
+    if (bar) bar.style.width = Math.max(2, Math.min(100, ref ? (val/ref*100) : 0)) + '%';
+  }
+
+  function setLens(id) {
+    if (LENS === id) return;
+    LENS = id;
+    document.querySelectorAll('.lens').forEach(b => b.setAttribute('aria-current', String(b.dataset.lens === id)));
+    LENSES[id].enter();
+  }
+  document.getElementById('dock').addEventListener('click', e => { const b = e.target.closest('.lens'); if (b) setLens(b.dataset.lens); });
+
+  // ---- the climax ripple: one lever → every lens ----
+  let rippleTimer = null;
+  function rippleTo(rel, shel, immediate) {
+    RELEASE = Number(rel); SHELTER = Number(shel);
+    clearTimeout(rippleTimer);
+    rippleTimer = setTimeout(async () => {
+      const [sim, l] = await Promise.all([ loadSim(RELEASE, SHELTER), lensesAt(RELEASE, SHELTER) ]);
+      if (!l) return;
+      if (!BASELINE) BASELINE = await lensesAt(0, 0) || l;
+      const tEl = document.getElementById('m-transit'), sEl = document.getElementById('m-safety'),
+            bEl = document.getElementById('m-business'), cEl = document.getElementById('combined');
+      if (tEl) tEl.textContent = mult2(l.transit.peak_congestion) + '×';
+      if (sEl) sEl.textContent = dK(l.safety.cost);
+      if (bEl) bEl.textContent = dK(l.business.lost);
+      if (cEl) cEl.textContent = dK(l.cross_domain_benefit);
+      setMeter('transit', l.transit.peak_congestion, BASELINE.transit.peak_congestion);
+      setMeter('safety', l.safety.cost, BASELINE.safety.cost);
+      setMeter('business', l.business.lost, BASELINE.business.lost);
+    }, immediate ? 0 : 220);
+  }
+
+  async function runOptimize(e) {
+    const btn = e ? e.target : null;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Searching levers…'; }
+    try {
+      const d = await (await fetch('/optimize?safety=1&business=1')).json();
+      const relMin = d.best_params.release_minutes || 0, shelFrac = d.best_params.shelter_fraction || 0;
+      // Light the room: cyber intensity ramp for the climax (Von Restorff).
+      document.documentElement.setAttribute('data-theme', 'cyber');
+      // Drive the levers to the optimum on the shared map + meters.
+      RELEASE = relMin; SHELTER = shelFrac;
+      const rel = document.getElementById('rel'), shel = document.getElementById('shel');
+      if (rel) { rel.value = relMin; document.getElementById('rv').textContent = relMin+'m'; }
+      if (shel) { shel.value = shelFrac; document.getElementById('sv').textContent = Math.round(shelFrac*100)+'%'; }
+      await loadSim(relMin, shelFrac);
+      // Single source of truth for the combined number: the 4-lens objective J
+      // avoided at the optimum (no double-counting), consistent with the live ripple.
+      if (!BASELINE) BASELINE = await lensesAt(0, 0);
+      const l = await lensesAt(relMin, shelFrac);
+      const combined = l ? l.cross_domain_benefit : 0;
+      // The before/after + grounded insight card.
+      const out = document.getElementById('opt-out');
+      const card =
+        '<div class="insight"><span class="tag '+(d.grounded?'grounded">✓ grounded':'fallback">⚠ template')+'</span><br>'+esc(d.insight)+'</div>'+
+        '<div class="ba"><div class="card"><div class="k">Do nothing</div><div class="v bad">'+mult2(d.baseline_peak.congestion)+'×</div><div class="hint">'+esc(d.baseline_peak.label)+'</div></div>'+
+        '<div class="card"><div class="k">Best ('+relMin+'m · '+Math.round(shelFrac*100)+'%)</div><div class="v good">'+mult2(d.best_peak.congestion)+'×</div><div class="hint">'+esc(d.best_peak.label)+'</div></div></div>'+
+        '<div class="combined"><div class="k">Combined benefit — one objective, every lens</div><div class="v num">'+dK(combined)+'</div></div>';
+      if (out) out.innerHTML = card;
+      // Animate the City meters to the optimum (same /lenses source as the ripple).
+      if (l && document.getElementById('combined')) {
+        document.getElementById('m-transit').textContent = mult2(l.transit.peak_congestion)+'×';
+        document.getElementById('m-safety').textContent = dK(l.safety.cost);
+        document.getElementById('m-business').textContent = dK(l.business.lost);
+        document.getElementById('combined').textContent = dK(combined);
+        setMeter('transit', l.transit.peak_congestion, BASELINE.transit.peak_congestion);
+        setMeter('safety', l.safety.cost, BASELINE.safety.cost);
+        setMeter('business', l.business.lost, BASELINE.business.lost);
+      }
+      if (document.getElementById('bd')) renderBreakdown();
+      setStatus('Optimized: <b>'+relMin+'m release + '+Math.round(shelFrac*100)+'% shelter</b> → '+dK(combined)+' combined');
+    } catch (err) {
+      setStatus('<span style="color:var(--risk-high)">optimize failed</span>');
+    } finally { if (btn) { btn.disabled = false; btn.textContent = '✨ Find the best intervention'; } }
+  }
+
+  function renderBreakdown() {
+    const bd = document.getElementById('bd'); if (!bd || !SIM) return;
+    const cb = SIM.cost_breakdown || {};
+    bd.innerHTML = [['Commuter delay',cb.delay],['Hold (release)',cb.hold],['Rain exposure',cb.exposure],
+      ['Shelter staffing',cb.staffing],['Crowd safety',cb.safety]]
+      .map(([k,v]) => '<tr><td>'+k+'</td><td>'+dK(v)+'</td></tr>').join('') +
+      '<tr class="total"><td>Total J</td><td>'+dK(cb.total)+'</td></tr>';
+  }
+  function resizeTime() { const t = document.getElementById('time'); if (t && SIM) { t.max = SIM.frames.length-1; if (FRAME>t.max) FRAME=0; t.value=FRAME; } }
+  function togglePlay() {
+    const btn = document.getElementById('play'); if (!SIM) return;
+    if (playing) { stopPlay(); return; }
+    playing = true; btn.textContent = '⏸ Pause';
+    timer = setInterval(() => { FRAME = (FRAME+1) % SIM.frames.length;
+      const t = document.getElementById('time'); if (t) t.value = FRAME; refreshOS();
+      if (FRAME === SIM.frames.length-1) stopPlay(); }, 120);
+  }
+  function stopPlay() { playing = false; clearInterval(timer); const b = document.getElementById('play'); if (b) b.textContent = '▶ Play'; }
+
+  // ---- Safety: civic analyze + click-to-verify (reuses /civic) ----
+  function srcText(s) { const b = ['source '+esc(s.tag),'['+esc(s.dataset)+']',esc(s.kind)];
+    if (s.detail) b.push('— '+esc(s.detail)); if (s.ref) b.push('· #'+esc(s.ref)); if (s.date) b.push('· '+esc(s.date)); return '↳ '+b.join(' '); }
+  async function analyzeAddress(address) {
+    const row = ADDRS.find(a => a.label === address);
+    if (row) map.easeTo({ center:[row.lng, row.lat], zoom: Math.max(map.getZoom(), 14.5) });
+    map.getSource('civ-sel') && map.getSource('civ-sel').setData({ type:'FeatureCollection',
+      features: row ? [{ type:'Feature', geometry:{ type:'Point', coordinates:[row.lng,row.lat] }, properties:{} }] : [] });
+    const detail = document.getElementById('detail'); if (!detail) return;
+    detail.innerHTML = '<p class="hint"><span class="spinner"></span>Analyzing '+esc(address)+'…</p>';
+    panel.querySelectorAll('#addrlist button').forEach(b => b.setAttribute('aria-current', String(b.dataset.label === address)));
+    let d; try { d = await (await fetch('/civic/analyze?address='+encodeURIComponent(address))).json(); }
+    catch (e) { detail.innerHTML = '<div class="err">Analysis unavailable.</div>'; return; }
+    if (!d.found) { detail.innerHTML = '<div class="err">“'+esc(d.address||address)+'” not in the fused datasets — not an all-clear; check spelling.</div>'; return; }
+    const idx = (h, score, band) => '<div class="idx"><div class="idx-h">'+h+'</div><div class="idx-score b-'+band+'">'+score+'<span class="scale"> / 1</span></div><div class="b-'+band+'">'+(band||'').toUpperCase()+'</div></div>';
+    const claims = (d.claims||[]).map((c,i) => { const s = c.source; const id='s'+i;
+      return '<li>'+esc(c.text)+(s?' <button class="verify" data-t="'+id+'">✓ verify</button><div id="'+id+'" class="srcline" hidden>'+srcText(s)+'</div>':'')+'</li>'; }).join('');
+    detail.innerHTML = '<div style="font-size:18px;font-weight:800;margin:4px 0">'+esc(d.matched_address||d.address)+'</div>'+
+      '<div class="idxrow">'+idx('Food safety', d.risk_safety, d.band_safety)+idx('Construction activity', d.risk_activity, d.band_activity)+'</div>'+
+      '<p class="hint">Two independent indices (0–1), never summed (ADR-0014).</p>'+
+      '<h2>Assessment — verify each claim against its source</h2><ul id="claims">'+claims+'</ul>'+
+      '<p class="hint">'+((d.evidence||[]).length)+' linked source records · the model phrases these numbers, it cannot invent them.</p>';
+  }
+  panel.addEventListener('click', e => { const b = e.target.closest('.verify'); if (!b) return;
+    const r = document.getElementById(b.dataset.t), open = r.hasAttribute('hidden');
+    r.toggleAttribute('hidden', !open); b.textContent = open ? '✕ hide' : '✓ verify'; });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && LENS === 'safety') {
+    const d = document.getElementById('detail'); if (d) d.innerHTML = '<p class="hint">Pick a pin or address for its grounded risk read.</p>'; } });
+
+  // ---- boot → load everything → reveal City ----
+  async function boot() {
+    try {
+      const [scen, sim, addrs] = await Promise.all([
+        fetch('/scenario').then(r=>r.json()),
+        fetch('/simulate?release_minutes=0&shelter_fraction=0').then(r=>r.json()),
+        fetch('/civic/addresses').then(r=>r.ok?r.json():[]).catch(()=>[])
+      ]);
+      SCEN = scen; SIM = sim; ADDRS = Array.isArray(addrs) ? addrs : [];
+      const evs = SCEN.meta.events || [];
+      document.getElementById('scenario-tag').textContent =
+        evs.length + ' events · ' + Math.round(SCEN.meta.crowd_size).toLocaleString() + ' people · offline on one box';
+      drawLayers();
+      setLens('city');
+    } catch (err) { setStatus('<span style="color:var(--risk-high)">load failed: '+esc(err.message)+'</span>'); }
+  }
+
+  map.on('load', async () => {
+    // Boot overlay first; on Enter, rise the 3D skyline then load the canvas.
+    OSBoot.play({ onEnter: () => {
+      vis('buildings-3d', true);
+      map.easeTo({ pitch: 52, bearing: -18, zoom: 13.0, duration: 2200 });
+      setTimeout(() => map.easeTo({ pitch: 0, bearing: 0, zoom: 12.7, duration: 1400 }), 2600);
+    }}).then(boot);
+  });
+  </script>
+</body>
+</html>

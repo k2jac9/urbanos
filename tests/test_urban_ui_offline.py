@@ -27,8 +27,10 @@ client = TestClient(app)
 
 @pytest.fixture(scope="module")
 def page() -> str:
-    """The served map page (via the real route, not a raw file read)."""
-    r = client.get("/")
+    """The classic single-view map page (via the real route, not a raw file read).
+    ``/`` now serves the unified Urban OS shell; the classic page these hooks test
+    lives at ``/classic``."""
+    r = client.get("/classic")
     assert r.status_code == 200
     return r.text
 

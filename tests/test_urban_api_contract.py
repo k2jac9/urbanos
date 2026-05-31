@@ -415,7 +415,7 @@ def test_index_references_vendored_offline_assets():
     r = client.get("/")
     assert r.status_code == 200
     text = r.text
-    assert "Urban-OS" in text
+    assert "Urban OS" in text
     assert "maplibre-gl" in text            # vendored, not a CDN
     assert "http://" not in text.replace("http://localhost", "")  # no external http
     assert "cdn." not in text and "unpkg" not in text and "jsdelivr" not in text

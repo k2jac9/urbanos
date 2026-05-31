@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import math
 import numbers
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 
@@ -42,7 +43,14 @@ from urban_os.lenses import (
     WeatherLens,
 )
 from urban_os.narrate import build_insight
-from urban_os.optimize import cost_breakdown, optimize
+from urban_os.optimize import cost_breakdown, objective, optimize
+
+# The civic address-risk app, mounted same-origin at /civic so the unified shell
+# can reach /civic/addresses, /civic/analyze, /civic/health and /civic/ without a
+# second server/origin. Imported as a sub-app — see ``_load_civic_graph`` for the
+# lifespan caveat that makes its data actually load under this parent app.
+from civic_analyst.api.server import app as civic_app
+from civic_analyst.api import server as _civic_server
 
 # Our own page + the proven offline assets (vendored MapLibre/PMTiles + basemap).
 _HERE = Path(__file__).parent
@@ -51,10 +59,45 @@ _OFFLINE_ASSETS = (
     Path(__file__).resolve().parents[1] / "civic_analyst" / "api" / "static"
 )
 
-app = FastAPI(title="Urban-OS", version="0.1.0")
+
+def _load_civic_graph() -> None:
+    """Run civic_analyst's data-graph load under THIS (parent) app.
+
+    GOTCHA: a mounted sub-app's ``lifespan`` does NOT reliably run when the parent
+    app starts up under this Starlette version, so ``/civic/addresses`` would serve
+    an empty graph (civic only loads its module-global ``_graph`` from inside its
+    own lifespan). We reproduce civic's lifespan load here: clear the graph and
+    re-run ``load_into_graph`` into the SAME module-global ``_graph`` the mounted
+    sub-app's routes read. Best-effort and offline-safe — if no data is present the
+    graph stays empty and the server still boots (civic's own contract)."""
+    try:
+        _civic_server._graph.clear()  # reload cleanly; never accumulate prior loads
+        summary = _civic_server.load_into_graph(
+            _civic_server._graph, _civic_server.settings.data_dir
+        )
+        # Mirror civic's lifespan side effect so /civic/health reports its load.
+        civic_app.state.load_summary = summary
+    except Exception:
+        # Loading civic data must never block Urban-OS startup (offline invariant).
+        pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure the mounted civic sub-app has its knowledge graph loaded (its own
+    # lifespan won't fire under the parent — see _load_civic_graph).
+    _load_civic_graph()
+    yield
+
+
+app = FastAPI(title="Urban-OS", version="0.1.0", lifespan=lifespan)
 
 # Serve vendored maplibre-gl.js/.css, pmtiles.js and toronto.pmtiles fully offline.
 app.mount("/static", StaticFiles(directory=_OFFLINE_ASSETS), name="static")
+
+# The civic address-risk app, same-origin under /civic (its data is loaded by this
+# app's lifespan above, not the sub-app's own lifespan).
+app.mount("/civic", civic_app)
 
 
 @lru_cache(maxsize=1)
@@ -129,10 +172,40 @@ def _native(obj):
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    page = _UI_DIR / "urban_os.html"
+    """The unified "Urban OS" shell (one city canvas + a lens dock). Falls back to
+    the classic single-view ``urban_os.html`` if the shell asset is missing, so the
+    page is never blank. The classic view is also always at ``/classic``."""
+    page = _UI_DIR / "os.html"
+    if not page.is_file():
+        page = _UI_DIR / "urban_os.html"
     try:
         return page.read_text(encoding="utf-8")
     except OSError as exc:  # missing/unreadable page asset — fail loudly, not blank
+        raise HTTPException(status_code=500, detail="map UI asset unavailable") from exc
+
+
+@app.get("/os", response_class=HTMLResponse)
+def os_shell() -> FileResponse:
+    """The forthcoming unified "Urban OS" shell page (built by another worker).
+
+    ``/`` is intentionally left serving the CURRENT ``urban_os.html`` so the live
+    demo never breaks mid-build; we flip ``/`` → ``os.html`` manually at the very
+    end. Until ``os.html`` exists this 404s gracefully (rather than 500), so adding
+    the route now is safe and purely additive."""
+    page = _UI_DIR / "os.html"
+    if not page.is_file():
+        raise HTTPException(status_code=404, detail="os shell not built yet")
+    return FileResponse(page, media_type="text/html")
+
+
+@app.get("/classic", response_class=HTMLResponse)
+def classic() -> str:
+    """The current Urban-OS map page under a stable path, so it stays reachable
+    after ``/`` is later flipped to the new ``os.html`` shell."""
+    page = _UI_DIR / "urban_os.html"
+    try:
+        return page.read_text(encoding="utf-8")
+    except OSError as exc:
         raise HTTPException(status_code=500, detail="map UI asset unavailable") from exc
 
 
@@ -297,6 +370,111 @@ def simulate(
         "shelter_fraction": _r(shelter, 2),
         "cost_breakdown": breakdown,
     }
+
+
+def _four_lens_stack(sc):
+    """The full four-lens stack (transit + economic + civic safety + business),
+    same composition ``_cross_domain`` uses. SafetyLens is made literal by the
+    civic-risk → node fusion; BusinessFlow scores retail around the primary venue."""
+    return [
+        EventSurge(events=sc.events),
+        EconomicLens(),
+        SafetyLens(civic_safety_by_node(sc.substrate)),
+        BusinessFlow(sc.venue_id),
+    ]
+
+
+def _four_lens_J(stack, result) -> float:
+    """Objective J of a four-lens run = the sum of every lens's cost (the same
+    additive objective the optimizer minimises). Native float, no numpy leak."""
+    return float(sum(float(ln.cost(result)) for ln in stack))
+
+
+@app.get("/lenses")
+def lenses_endpoint(
+    release_minutes: float = Query(0.0, ge=0.0, le=20.0),
+    shelter_fraction: float = Query(0.0, ge=0.0, le=1.0),
+) -> dict:
+    """Run the FULL four-lens stack at the EXACT lever params and return the
+    cross-domain costs (transit + safety + business + combined J) so the UI can
+    animate every meter together as the slider moves — the demo's "one lever, every
+    lens" live ripple.
+
+    Fast by design: exactly TWO sims (the requested ``(release, shelter)`` plus a
+    ``(0, 0)`` baseline) — never the optimizer grid. Bounds are enforced
+    declaratively by ``Query`` (out-of-range → 422); we also reject non-finite
+    levers explicitly (a client can send ``=nan``, which satisfies neither bound in
+    some stacks)."""
+    release = float(release_minutes)
+    if not math.isfinite(release):
+        raise HTTPException(status_code=422, detail="release_minutes must be finite")
+    shelter = float(shelter_fraction)
+    if not math.isfinite(shelter):
+        raise HTTPException(status_code=422, detail="shelter_fraction must be finite")
+
+    sc = _scenario()
+    try:
+        cur_stack = _four_lens_stack(sc)
+        current = Simulation(
+            sc.substrate,
+            cur_stack,
+            params={"release_minutes": release, "shelter_fraction": shelter},
+            dt=sc.dt,
+        ).run(sc.horizon)
+        base_stack = _four_lens_stack(sc)
+        baseline = Simulation(
+            sc.substrate,
+            base_stack,
+            params={"release_minutes": 0.0, "shelter_fraction": 0.0},
+            dt=sc.dt,
+        ).run(sc.horizon)
+    except Exception as exc:  # kernel failure — clean 500, no stack leak
+        raise HTTPException(status_code=500, detail="lens evaluation failed") from exc
+
+    safety_lens = next(ln for ln in cur_stack if ln.name == "safety")
+    cur_lost = float(sum(current.series("business_lost")))
+    base_lost = float(sum(baseline.series("business_lost")))
+    cur_J = _four_lens_J(cur_stack, current)
+    base_J = _four_lens_J(base_stack, baseline)
+    peak = current.peak_congestion()
+
+    # Additive cross-domain benefit — the SAME composition /optimize reports as its
+    # headline "combined_benefit": 3-lens transit-J savings (the WeatherLens/shelter
+    # stack the optimizer searches) + civic-safety reduction + business recovered.
+    # The UI's combined counter ticks to THIS so the live ripple and the optimizer's
+    # reveal agree on one number (two more sims; still no grid search).
+    t_cur_stack, t_base_stack = _lenses(sc), _lenses(sc)
+    t_cur = Simulation(sc.substrate, t_cur_stack,
+        params={"release_minutes": release, "shelter_fraction": shelter}, dt=sc.dt).run(sc.horizon)
+    t_base = Simulation(sc.substrate, t_base_stack,
+        params={"release_minutes": 0.0, "shelter_fraction": 0.0}, dt=sc.dt).run(sc.horizon)
+    transit_savings = objective(t_base, t_base_stack) - objective(t_cur, t_cur_stack)
+    safety_reduction = float(safety_lens.cost(baseline)) - float(safety_lens.cost(current))
+    cross_domain_benefit = transit_savings + safety_reduction + (base_lost - cur_lost)
+
+    return _native(
+        {
+            "release_minutes": _r(release, 1),
+            "shelter_fraction": _r(shelter, 2),
+            "transit": {
+                "peak_label": peak["label"],
+                "peak_congestion": _r(peak["congestion"]),
+                "delay_cost": _r(sum(current.series("delay_cost")), 2),
+            },
+            "safety": {"cost": _r(safety_lens.cost(current), 2)},
+            "business": {
+                "lost": _r(cur_lost, 2),
+                "recovered_vs_baseline": _r(base_lost - cur_lost, 2),
+            },
+            "combined_cost": _r(cur_J, 2),
+            "baseline_combined": _r(base_J, 2),
+            # Single-objective J avoided (the conservative, no-double-count number).
+            "combined_benefit": _r(base_J - cur_J, 2),
+            # Additive cross-domain benefit (matches /optimize's headline ~$458k) —
+            # what the shell's combined-$ counter displays.
+            "cross_domain_benefit": _r(cross_domain_benefit, 2),
+        }
+    )
 
 
 def _peak_dict(result) -> dict:

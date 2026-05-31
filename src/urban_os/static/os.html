@@ -155,6 +155,62 @@
     /* Climax intensity ramp uses html[data-theme="cyber"] (from tokens.css). */
     html[data-theme="cyber"] #map { filter: saturate(1.15) contrast(1.05); }
 
+    /* ── ADR-0026: motion + clarity ──────────────────────────────────────────
+       a11y first: honour the OS "reduce motion" setting — every animation/
+       transition below (and the existing ones) collapse to instant. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
+    /* Staggered entrance of panel children on a lens swap — depth without clutter. */
+    #panel.swap > * { animation: rise .42s both cubic-bezier(.2,.7,.3,1); }
+    #panel.swap > *:nth-child(2) { animation-delay: .04s; }
+    #panel.swap > *:nth-child(3) { animation-delay: .08s; }
+    #panel.swap > *:nth-child(4) { animation-delay: .12s; }
+    #panel.swap > *:nth-child(5) { animation-delay: .16s; }
+    #panel.swap > *:nth-child(n+6) { animation-delay: .2s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    /* The headline $ "pops" when it updates (drag / optimize) — pulls the eye to the result. */
+    .combined.pop { animation: pop .5s ease; }
+    @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.05);
+      box-shadow: 0 0 30px color-mix(in srgb, var(--risk-none) 60%, transparent); } 100% { transform: scale(1); } }
+    /* The active lens icon breathes so the current view is unmistakable. */
+    .lens[aria-current="true"] .ic { animation: breathe 2.6s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+    /* "Light the room" climax flash (one shot, behind the panel, non-interactive). */
+    #flash { position: absolute; inset: 0; z-index: 4; pointer-events: none; opacity: 0;
+      background: radial-gradient(circle at 62% 48%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 60%); }
+    #flash.on { animation: flash 1.1s ease; }
+    @keyframes flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* Help (?) affordance — orientation, legend & provenance on demand (Depth). */
+    #helpbtn { pointer-events: auto; width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      background: rgba(15,23,42,.72); border: 1px solid var(--border-2); color: var(--text-soft);
+      font-weight: 800; font-size: 14px; line-height: 1; transition: all .18s ease; }
+    #helpbtn:hover, #helpbtn:focus-visible { border-color: var(--accent); color: var(--accent-text);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+    dialog#help { color: var(--text); background: var(--surface-2); border: 1px solid var(--accent);
+      border-radius: var(--r-xl); max-width: 540px; width: 92vw; padding: 0;
+      box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+    dialog#help::backdrop { background: rgba(2,6,15,.62); backdrop-filter: blur(3px); }
+    .help-bd { padding: 18px 22px; }
+    .help-bd h2 { margin: 0 0 2px; font-size: 18px; color: var(--text-strong); }
+    .help-bd h3 { margin: 15px 0 5px; font-size: 12px; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--text-muted); }
+    .help-bd p, .help-bd li { font-size: 13px; line-height: 1.5; color: var(--text-soft); margin: 4px 0; }
+    .help-bd ul { margin: 4px 0; padding-left: 18px; }
+    .help-bd .close { float: right; cursor: pointer; background: none; border: none;
+      color: var(--text-muted); font-size: 20px; line-height: 1; }
+    /* Colour-encoding legend (Understandable) — reused inline + in the help dialog. */
+    .legend { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 6px 0; }
+    .legend .key { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); }
+    .legend .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+    /* Dataset-provenance chips (Honest/Understandable). */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+    .chip { font-size: 11px; background: var(--surface-sel); border: 1px solid var(--border-2);
+      border-radius: var(--pill); padding: 2px 9px; color: var(--text-soft); }
+    .illus { font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 4px; }
+
     /* Responsive: tablet narrows the panel; phone moves the dock to a top rail and
        the panel to a bottom sheet so the map stays visible (audit: broke <1200px). */
     @media (max-width: 1100px) {
@@ -190,13 +246,51 @@
   <!-- F-10c: skip link lets keyboard users jump past the map straight to the panel. -->
   <a href="#panel" class="skip-link">Skip to controls</a>
   <main id="map" aria-label="Toronto city canvas"></main>
+  <!-- ADR-0026: one-shot "light the room" climax flash (non-interactive). -->
+  <div id="flash" aria-hidden="true"></div>
 
   <div id="topbar">
     <!-- F-10b: the wordmark is the page's real <h1> (was a styling-only span). -->
     <h1 id="wordmark">URBAN <span class="os">OS</span></h1>
     <span id="scenario-tag" class="num"></span>
     <span id="status">booting…</span>
+    <!-- ADR-0026: "How it works" — orientation, legend & provenance on demand (Depth). -->
+    <button id="helpbtn" aria-haspopup="dialog" aria-label="How Urban OS works">?</button>
   </div>
+
+  <!-- ADR-0026: self-contained explainer — what this is, the one action, the colour
+       legend, the data behind it, and the honesty notes. Hidden until invoked. -->
+  <dialog id="help" aria-labelledby="help-h">
+    <div class="help-bd">
+      <button class="close" aria-label="Close">×</button>
+      <h2 id="help-h">Urban OS — one city, every lens</h2>
+      <p>A digital twin of downtown Toronto on a peak <b>FIFA 2026</b> day, running
+        <b>100% on one box</b>. Pick a <b>lens</b> on the left; in City/Flow, drag the
+        <b>one lever</b> (staggered release + shelter) and watch every lens move together.</p>
+      <h3>The four lenses</h3>
+      <ul>
+        <li><b>City</b> — the whole picture + the one lever and its combined benefit.</li>
+        <li><b>Safety</b> — address risk over 3 fused City of Toronto datasets, every number grounded (tap ✓ verify).</li>
+        <li><b>Flow</b> — the crowd-egress simulation; scrub time, see the crush.</li>
+        <li><b>Economy</b> — local trade lost to the crush, and recovered.</li>
+      </ul>
+      <h3>Reading the colours</h3>
+      <div class="legend">
+        <span class="key"><span class="sw bg-none"></span>none</span>
+        <span class="key"><span class="sw bg-low"></span>low</span>
+        <span class="key"><span class="sw bg-medium"></span>medium (≥0.34)</span>
+        <span class="key"><span class="sw bg-high"></span>high (≥0.67)</span>
+      </div>
+      <p class="hint">Risk uses <b>two independent indices</b> — Safety &amp; Activity (0–1) — never summed (ADR-0014).
+        On the Flow map, node colour is crowd <b>congestion ×</b> capacity (green ≤1× → red ≥1×).</p>
+      <h3>Grounded in real open data</h3>
+      <div class="chips"><span class="chip">DineSafe</span><span class="chip">Building permits</span><span class="chip">Business licences</span></div>
+      <p class="hint">The local Nemotron model only <b>phrases</b> these numbers — it cannot invent them.
+        Dollar figures are <span class="illus">calibrated, illustrative</span> (the <i>shape</i> is the claim, not the cent).</p>
+      <h3>On-device optimization</h3>
+      <p class="hint">A cuOpt <b>evacuation max-flow</b> bounds the best the network can clear; cuML clusters risk into hotspots — both GPU-accelerated on the box, with CPU fallback.</p>
+    </div>
+  </dialog>
 
   <nav id="dock" aria-label="Lenses">
     <button class="lens" data-lens="city"    type="button" aria-label="City lens — overview" title="City — overview"><span class="ic" aria-hidden="true">🏙️</span>City</button>
@@ -383,6 +477,17 @@
   }
   const setStatus = (h) => { document.getElementById('status').innerHTML = h; };
 
+  // ADR-0026: "How it works" dialog — open on ?, close on ×, Esc (native), or backdrop.
+  const helpDlg = document.getElementById('help');
+  document.getElementById('helpbtn').addEventListener('click', () => { try { helpDlg.showModal(); } catch (_) {} });
+  helpDlg.querySelector('.close').addEventListener('click', () => helpDlg.close());
+  helpDlg.addEventListener('click', (e) => { if (e.target === helpDlg) helpDlg.close(); });
+  // ADR-0026: result cues — the headline $ "pops" and (on the optimizer) the room flashes.
+  function popCombined() { const c = document.getElementById('combined');
+    if (c) { c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); } }
+  function flashRoom() { const f = document.getElementById('flash');
+    if (f) { f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); } }
+
   // ============================ LENSES ============================
   const panel = document.getElementById('panel');
   function paint(html) { panel.innerHTML = html; panel.classList.remove('swap'); void panel.offsetWidth; panel.classList.add('swap'); }
@@ -459,7 +564,9 @@
             '<div class="v num" id="combined" title="">—</div>'+
             '<div class="optband" style="margin-top:6px">'+
               '<span id="cd-label" title="">cross-domain (additive)</span> · '+
-              'net benefit <b id="net-benefit" class="num" title="">—</b></div></div>'+
+              'net benefit <b id="net-benefit" class="num" title="">—</b></div>'+
+              // ADR-0026: keep the dollars honest — they are calibrated, illustrative.
+              '<p class="illus">Figures are calibrated, illustrative — the shape is the claim.</p></div>'+
           '<div class="row"><button class="act" id="opt">✨ Find the best intervention</button></div>'+
           '<p class="hint">Drag the lever: the city calms and all three lenses move together. “Find the best” runs the optimizer and lights the room.</p>'
         );
@@ -481,6 +588,13 @@
         paint(
           '<h2 class="ptitle">🛡️ Safety lens</h2>'+
           '<p class="psub">The civic-risk app, as a kernel lens — address risk over 3 fused City of Toronto datasets. Every number is grounded; tap ✓ verify.</p>'+
+          // ADR-0026: dataset provenance (Honest/Understandable) + the band legend so
+          // the pin colours are self-explanatory without opening "How it works".
+          '<div class="chips"><span class="chip">DineSafe</span><span class="chip">Building permits</span><span class="chip">Business licences</span></div>'+
+          '<div class="legend"><span class="key"><span class="sw bg-none"></span>none</span>'+
+            '<span class="key"><span class="sw bg-low"></span>low</span>'+
+            '<span class="key"><span class="sw bg-medium"></span>medium</span>'+
+            '<span class="key"><span class="sw bg-high"></span>high</span></div>'+
           '<div class="row"><button class="gh" data-label="500 Bloor St W">★ 500 Bloor St W (3-dataset hero)</button></div>'+
           '<h3 class="panel-h">Highest-risk addresses<span class="hint" style="text-transform:none;font-weight:400"> · ranked by most-elevated index</span></h3><ul id="addrlist">'+rows+'</ul>'+
           '<div id="detail"><p class="hint">Pick a pin or address for its grounded risk read.</p></div>'
@@ -500,6 +614,11 @@
         paint(
           '<h2 class="ptitle">🌊 Flow lens</h2>'+
           '<p class="psub">The FIFA convergence crunch — four venues empty at once. Scrub time; pull the levers.</p>'+
+          // ADR-0026: congestion colour scale so the heatmap reads at a glance.
+          '<div class="legend"><span class="key"><span class="sw" style="background:#22c55e"></span>≤1× (clear)</span>'+
+            '<span class="key"><span class="sw" style="background:#84cc16"></span>~1×</span>'+
+            '<span class="key"><span class="sw" style="background:#f59e0b"></span>1.5×</span>'+
+            '<span class="key"><span class="sw" style="background:#ef4444"></span>≥2× crush</span></div>'+
           '<div class="row"><button class="gh" id="play">▶ Play</button>'+
             // F-10a: the time scrubber was unlabelled — name it + announce the frame.
             '<input id="time" type="range" min="0" max="'+((SIM?SIM.frames.length:1)-1)+'" value="'+FRAME+'" style="flex:1"'+
@@ -618,7 +737,7 @@
       if (bEl) bEl.textContent = dK(l.business.lost);
       // F-4: headline = cross-domain additive; net benefit = conservative single-J.
       // F-9: tween to the EXACT target (count-up that always lands on dK(target)).
-      if (cEl) { tweenMoney(cEl, l.cross_domain_benefit); cEl.title = benefitTip('cross_domain_benefit'); }
+      if (cEl) { tweenMoney(cEl, l.cross_domain_benefit); cEl.title = benefitTip('cross_domain_benefit'); popCombined(); }
       setBenefitLabels(l.cross_domain_benefit, l.combined_benefit);
       setMeter('transit', l.transit.peak_congestion, BASELINE.transit.peak_congestion);
       setMeter('safety', l.safety.cost, BASELINE.safety.cost);
@@ -632,8 +751,9 @@
     try {
       const d = await (await fetch('/optimize?safety=1&business=1')).json();
       const relMin = d.best_params.release_minutes || 0, shelFrac = d.best_params.shelter_fraction || 0;
-      // Light the room: cyber intensity ramp for the climax (Von Restorff).
+      // Light the room: cyber intensity ramp + a one-shot flash for the climax (Von Restorff).
       document.documentElement.setAttribute('data-theme', 'cyber');
+      flashRoom();
       // Drive the levers to the optimum on the shared map + meters.
       RELEASE = relMin; SHELTER = shelFrac;
       const rel = document.getElementById('rel'), shel = document.getElementById('shel');
@@ -667,7 +787,7 @@
         document.getElementById('m-safety').textContent = dK(l.safety.cost);
         document.getElementById('m-business').textContent = dK(l.business.lost);
         const cEl = document.getElementById('combined');
-        tweenMoney(cEl, combined); cEl.title = benefitTip('cross_domain_benefit');  // F-9: exact final frame
+        tweenMoney(cEl, combined); cEl.title = benefitTip('cross_domain_benefit'); popCombined();  // F-9: exact final frame
         setBenefitLabels(combined, jAvoided);
         setMeter('transit', l.transit.peak_congestion, BASELINE.transit.peak_congestion);
         setMeter('safety', l.safety.cost, BASELINE.safety.cost);

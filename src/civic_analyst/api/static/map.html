@@ -513,24 +513,7 @@
       if (mapReady) map.easeTo({ pitch: 0, bearing: 0, duration: 700 });
     }
     // ---- Real building focus + floating 3D info board over the selected address ----
-    let focusSeq = 0, infoBoard = null;
-    const bldCentroid = (geom) => {
-      const ring = (geom && geom.coordinates && geom.coordinates[0]) || [];
-      let x = 0, y = 0, n = 0;
-      ring.forEach((c) => { x += c[0]; y += c[1]; n++; });
-      return n ? [x / n, y / n] : null;
-    };
-    // A small circular footprint (metres radius) at a point — the synthetic fallback
-    // the focus highlight extrudes when the sparse offline basemap has no real footprint
-    // at an address, so EVERY selection lights up, not just the few that sit on a footprint.
-    const discPolygon = (lng, lat, m) => {
-      const dLat = m / 111111, dLng = m / (111111 * Math.cos(lat * Math.PI / 180)), ring = [];
-      for (let i = 0; i <= 24; i++) {
-        const a = (i / 24) * 2 * Math.PI;
-        ring.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]);
-      }
-      return { type: 'Polygon', coordinates: [ring] };
-    };
+    let infoBoard = null;
     // Order matters: the licence dataset name also contains "Permits", so test it first.
     const shortDataset = (n) => /licen[cs]e/i.test(n) ? 'Licences'
       : /dinesafe/i.test(n) ? 'DineSafe' : /permit/i.test(n) ? 'Permits' : n;
@@ -568,30 +551,12 @@
     function focusBuilding(label, d) {
       const row = ADDR_ROWS.find((a) => a.label === label);
       if (!row || !mapReady) return;
-      const seq = ++focusSeq;
-      // Tear down the previous selection's highlight at selection time, so the stale
-      // magenta footprint doesn't stay lit on the OLD building through the 1200ms flyTo.
+      // No building-footprint highlight: the offline basemap can't render footprints
+      // consistently across addresses, so in 3D we just fly to the location and float
+      // its info card — the band-coloured pin dot already marks the spot.
       clearFocus();
       showBoard(row, d);
       map.flyTo({ center: [row.lng, row.lat], zoom: 17.3, pitch: 64, bearing: -22, duration: 1200 });
-      map.once('idle', () => {
-        if (seq !== focusSeq || !PRES) return;   // superseded by a newer click, or left 3D
-        if (map.getLayer('focusbld')) map.removeLayer('focusbld');
-        if (map.getSource('focusbld')) map.removeSource('focusbld');
-        // UNIFORM marker. The offline basemap's building footprints are too sparse and
-        // uneven to highlight consistently — a couple of addresses (e.g. 65 Front St W)
-        // sit on a big tagged tower while most sit on nothing. Lighting real buildings
-        // for some and discs for others looked inconsistent, so anchor the SAME synthetic
-        // footprint at every selected pin: same shape, same size, band-coloured.
-        const col = { high: '#ff3b6b', medium: '#ffb020', low: '#ffe34d', none: '#2bff88' }[worstBand(row)];
-        map.addSource('focusbld', { type: 'geojson',
-          data: { type: 'Feature', properties: {}, geometry: discPolygon(row.lng, row.lat, 16) } });
-        map.addLayer({ id: 'focusbld', source: 'focusbld', type: 'fill-extrusion',
-          paint: { 'fill-extrusion-color': col,
-                   'fill-extrusion-height': 40,
-                   'fill-extrusion-base': 0,
-                   'fill-extrusion-opacity': 0.9 } });
-      });
     }
     function setPresentation(on) {
       PRES = on;

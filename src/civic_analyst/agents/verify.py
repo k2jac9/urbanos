@@ -181,8 +181,66 @@ def evidence_index(
     return tagged, tag_map, id_to_tag
 
 
-def _ints(s: str) -> set[int]:
-    return {int(x) for x in re.findall(r"\d+", s or "")}
+# ADR-0020: a "number" is an integer OR a decimal (optionally with a fractional
+# part). We keep decimals intact (``2.5``) rather than splitting them into ``{2, 5}``
+# — the digit-run flaw ADR-0010 fixed in urban_os/narrate, now back-ported here so a
+# claim like "risk rose 2.5x" can't smuggle ``2.5`` past a whitelist of ``{2, 5}``.
+_NUM_RE = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _canon(val: float) -> str:
+    """Canonical string for a number so int/float compare on value, not rendering
+    (``2.0`` -> ``"2"``, ``"2.50"`` -> ``"2.5"``)."""
+    if not math.isfinite(val):
+        return "nan"
+    if float(val).is_integer():
+        return str(int(val))
+    return repr(round(float(val), 6)).rstrip("0").rstrip(".")
+
+
+def _nums(s: str) -> set[str]:
+    """Canonical numeric tokens in ``s`` (decimals preserved, not split)."""
+    out: set[str] = set()
+    for tok in _NUM_RE.findall(s or ""):
+        try:
+            out.add(_canon(float(tok)))
+        except ValueError:  # pragma: no cover - regex guarantees parseability
+            continue
+    return out
+
+
+def _is_year(tok: str) -> bool:
+    """Years are descriptive context, not findings — exempt 1900..2100 (as ADR-0010)."""
+    try:
+        v = float(tok)
+    except ValueError:  # pragma: no cover
+        return False
+    return v.is_integer() and 1900 <= v <= 2100
+
+
+# Keyword → record kind, for checking a claim cites the RIGHT TYPE of evidence
+# (ADR-0020): the system prompt already demands "the cited tag's record type must
+# match what the claim is about"; this enforces it in code so an inspection claim
+# can't cite a permit row and slip through.
+_CLAIM_KIND_HINTS: dict[str, tuple[str, ...]] = {
+    "permit": ("permit", "construction", "building", "demolition", "renovation", "scope"),
+    "inspection": (
+        "inspection", "dinesafe", "food", "health", "conditional pass", "fail",
+        "closed", "infraction", "re-check", "recheck", "premises", "violation",
+    ),
+    "licence": ("licence", "license", "business licen"),
+}
+
+
+def _claim_kind(text: str) -> str | None:
+    """The single record kind a claim is unambiguously about, else None.
+
+    Conservative on purpose: if a claim's wording matches zero kinds, or more than
+    one, we return None and skip kind-matching for it — we reject mis-citations, not
+    merely ambiguous phrasings."""
+    t = (text or "").lower()
+    hits = {kind for kind, kws in _CLAIM_KIND_HINTS.items() if any(k in t for k in kws)}
+    return next(iter(hits)) if len(hits) == 1 else None
 
 
 def source_tags(src) -> list[str]:
@@ -196,31 +254,51 @@ def source_tags(src) -> list[str]:
     return [t for t in (str(i).strip() for i in items) if t]
 
 
-def _allowed_numbers(address: str, findings) -> set[int]:
-    allowed = _ints(address)
+def _allowed_numbers(address: str, findings) -> set[str]:
+    allowed = _nums(address)
     for f in findings:
-        allowed |= _ints(f.summary)
+        allowed |= _nums(f.summary)
         for rec in f.evidence:
-            allowed |= _ints(str(rec.get("outcome", ""))) | _ints(str(rec.get("status", "")))
+            allowed |= _nums(str(rec.get("outcome", ""))) | _nums(str(rec.get("status", "")))
     return allowed
 
 
-def verify_claims(claims, address: str, findings, valid_tags: set[str]) -> list[str]:
-    """Return hallucination issues; empty means every claim checks out."""
+def verify_claims(claims, address: str, findings, tags) -> list[str]:
+    """Return hallucination issues; empty means every claim checks out.
+
+    ``tags`` may be either a ``tag_map`` (dict ``{tag: entry}``) — which enables
+    record-KIND matching (a permit claim must cite a permit row, etc., per ADR-0020)
+    — or a bare set of valid tag strings (back-compat: tag-existence + numbers only).
+    """
     if not isinstance(claims, list) or not claims:
         return ["no claims produced"]
+    if isinstance(tags, dict):
+        valid_tags = set(tags)
+        tag_kind = {t: (e or {}).get("kind") for t, e in tags.items()}
+    else:
+        valid_tags = set(tags)
+        tag_kind = {}
     allowed = _allowed_numbers(address, findings)
     issues: list[str] = []
     for c in claims:
         if not isinstance(c, dict) or not str(c.get("claim", "")).strip():
             issues.append("malformed claim")
             continue
-        tags = source_tags(c.get("source"))
-        if not tags or any(t not in valid_tags for t in tags):
+        ctags = source_tags(c.get("source"))
+        if not ctags or any(t not in valid_tags for t in ctags):
             issues.append(f"unverified source id: {c.get('source')!r}")
-        bad = {n for n in (_ints(str(c.get("claim"))) - allowed) if not 1900 <= n <= 2100}
+        bad = {n for n in (_nums(str(c.get("claim"))) - allowed) if not _is_year(n)}
         if bad:
             issues.append(f"unverified number(s): {sorted(bad)}")
+        # Kind-matching: the cited tag's record type must match the claim's topic.
+        if tag_kind:
+            kind = _claim_kind(str(c.get("claim")))
+            cited_kinds = {tag_kind.get(t) for t in ctags if t in valid_tags}
+            cited_kinds.discard(None)
+            if kind and cited_kinds and kind not in cited_kinds:
+                issues.append(
+                    f"source kind mismatch: claim about {kind} cites {sorted(cited_kinds)}"
+                )
     return issues
 
 

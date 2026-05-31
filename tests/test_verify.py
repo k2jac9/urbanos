@@ -73,6 +73,44 @@ def test_partial_invalid_tag_rejected():
     assert any("source id" in i for i in verify_claims(bad, ADDRESS, FINDINGS, VALID))
 
 
+# --- ADR-0020: decimal-safe numbers + record-kind matching ------------------- #
+def test_decimal_number_not_smuggled_via_digit_runs():
+    # "2.5" must NOT be accepted just because 2 and 5 appear in the evidence —
+    # the old digit-run guard split "2.5" into {2,5} and let it through.
+    bad = [{"claim": "Risk rose 2.5x after the 1 infraction.", "source": "E1"}]
+    issues = verify_claims(bad, ADDRESS, FINDINGS, VALID)
+    assert any("number" in i and "2.5" in i for i in issues)
+
+
+def test_year_like_number_still_exempt():
+    ok = [{"claim": "A 2019 inspection recorded 1 infraction.", "source": "E1"}]
+    assert verify_claims(ok, ADDRESS, FINDINGS, VALID) == []
+
+
+def test_kind_mismatch_caught_with_tag_map():
+    # E1 is an INSPECTION row, E2 a PERMIT row. A permit/construction claim that
+    # cites the inspection row must be rejected when the tag_map is supplied.
+    bad = [{"claim": "An open building permit indicates active construction.",
+            "source": "E1"}]
+    issues = verify_claims(bad, ADDRESS, FINDINGS, TAG_MAP)
+    assert any("kind mismatch" in i for i in issues)
+
+
+def test_kind_match_passes_with_tag_map():
+    good = [
+        {"claim": "An open building permit indicates active construction.", "source": "E2"},
+        {"claim": "A failed food inspection was recorded.", "source": "E1"},
+    ]
+    assert verify_claims(good, ADDRESS, FINDINGS, TAG_MAP) == []
+
+
+def test_kind_matching_skipped_for_bare_tag_set():
+    # Back-compat: passing the bare tag SET (not the map) does not kind-check.
+    claim = [{"claim": "An open building permit indicates active construction.",
+              "source": "E1"}]
+    assert verify_claims(claim, ADDRESS, FINDINGS, VALID) == []
+
+
 def test_narrator_keeps_clean_claims():
     out = RiskNarratorAgent(llm=_StubLLM(json.dumps(CLEAN))).claims(ADDRESS, FINDINGS)
     assert out == resolve_claims(CLEAN, TAG_MAP)

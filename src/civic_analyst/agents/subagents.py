@@ -137,7 +137,6 @@ class RiskNarratorAgent:
         record; any claim with an invented number or unknown source tag causes a
         fall back to deterministic claims (so output is always source-backed)."""
         tagged, tag_map, id_to_tag = evidence_index(findings)
-        valid_tags = {t["tag"] for t in tagged}
         ev = "\n".join(
             f"{t['tag']}: {t['dataset']} — {t['kind']} record"
             + (f", status/outcome '{t['detail']}'" if t["detail"] else "")
@@ -154,7 +153,9 @@ class RiskNarratorAgent:
             parsed = self._parse_json_array(self.llm.chat(self.SYSTEM, user, temperature=0.0))
         except Exception:  # offline / malformed output
             parsed = None
-        if parsed is None or verify_claims(parsed, address, findings, valid_tags):
+        # Pass the tag_map (not just the tag set) so the guard also enforces
+        # record-KIND matching — a permit claim must cite a permit row (ADR-0020).
+        if parsed is None or verify_claims(parsed, address, findings, tag_map):
             parsed = deterministic_claims(address, findings, tagged, id_to_tag)
         return resolve_claims(parsed, tag_map)
 

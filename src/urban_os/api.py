@@ -441,3 +441,19 @@ def optimize_endpoint(
         **_cross_domain_block(sc, opt.best_params, safety, business),
         "benefit_definitions": BENEFIT_DEFINITIONS,
     }
+
+
+@app.get("/flow")
+def flow_endpoint() -> dict:
+    """Optimal evacuation capacity of the substrate — the max crowd the capacitated
+    network can drain to its exits over the egress window (a max-flow LP; ADR-0025).
+    The *theoretical ceiling* the staggered-release sim approaches. Solved by cuOpt on
+    GPU when enabled (``URBANOS_GPU_FLOW=1``), else networkx max-flow on CPU."""
+    from urban_os.flow import optimal_evacuation_flow
+
+    sc = _scenario()
+    demands = {vid: crowd for vid, crowd, _ in sc.events}
+    try:
+        return _native(optimal_evacuation_flow(sc.substrate, demands, horizon=sc.horizon))
+    except Exception as exc:  # never break the surface — clean 500, no stack leak
+        raise HTTPException(status_code=500, detail="flow computation failed") from exc

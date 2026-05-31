@@ -29,7 +29,8 @@ def main() -> int:
     print(f"env: URBANOS_GPU_GRAPH={os.environ.get('URBANOS_GPU_GRAPH', '')!r} "
           f"URBANOS_GPU_DF={os.environ.get('URBANOS_GPU_DF', '')!r}")
     print("installed: " + ", ".join(
-        f"{m}={_have(m)}" for m in ("nx_cugraph", "cudf", "cudf_polars", "polars")
+        f"{m}={_have(m)}" for m in
+        ("nx_cugraph", "cudf", "cudf_polars", "polars", "cuopt", "cuml")
     ))
 
     # 1) nx-cugraph seam — building the scenario bakes the substrate shortest paths.
@@ -51,8 +52,33 @@ def main() -> int:
     else:
         print("[ingest] no CSV found under demo_data/ or fixtures/ — skipped")
 
-    gpu = kstate.GRAPH_BACKEND == "cugraph" or loader.DF_BACKEND == "cudf-polars"
-    print("\nRESULT:", "GPU path active ✅" if gpu else
+    # 3) cuOpt seam — optimal evacuation max-flow on the substrate.
+    from urban_os import flow
+    demands = {vid: crowd for vid, crowd, _ in sc.events}
+    fr = flow.optimal_evacuation_flow(sc.substrate, demands, horizon=sc.horizon)
+    print(f"[flow]   max_throughput={fr['max_throughput']} / demand={fr['demand']}  ->  "
+          f"FLOW_BACKEND={flow.FLOW_BACKEND}")
+
+    # 4) cuML seam — spatial risk-hotspot clustering of the civic addresses.
+    from civic_analyst import cluster
+    try:
+        from civic_analyst import mcp_server as civ
+        civ.load()
+        addrs = [a for a in civ.top_risk(limit=2000) if a.get("lat") is not None]
+    except Exception:
+        addrs = []
+    hotspots = cluster.risk_hotspots(addrs, k=4) if addrs else []
+    print(f"[cluster] {len(addrs)} addresses -> {len(hotspots)} hotspots  ->  "
+          f"CLUSTER_BACKEND={cluster.CLUSTER_BACKEND}")
+
+    backends = {
+        "graph": kstate.GRAPH_BACKEND, "ingest": loader.DF_BACKEND,
+        "flow": flow.FLOW_BACKEND, "cluster": cluster.CLUSTER_BACKEND,
+    }
+    gpu = {k: v for k, v in backends.items()
+           if v in ("cugraph", "cudf-polars", "cuopt", "cuml")}
+    print(f"\nGPU paths active: {gpu or 'none'}")
+    print("RESULT:", "GPU path active ✅" if gpu else
           "CPU fallback (honest) — install requirements-gpu.txt + set env on the box")
     return 0
 

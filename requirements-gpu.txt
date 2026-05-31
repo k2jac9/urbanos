@@ -17,8 +17,10 @@ nx-cugraph-cu12
 # RAPIDS cuDF engine behind Polars' GPU engine (civic ingest — src/civic_analyst/ingest/loader.py).
 cudf-polars-cu12
 
-# NOTE: cuOpt is deliberately NOT listed. It solves structured LP/MILP/routing, not a
-# black-box simulation-in-the-loop search like our lever optimizer (J is produced by
-# running the kernel). Wiring cuOpt requires reformulating the intervention as an
-# LP/MILP (or a min-cost-flow on the substrate) — a real next step, not a drop-in.
-# See src/urban_os/optimize.py for the honest scoping.
+# cuOpt LP solver for the optimal evacuation max-flow (URBANOS_GPU_FLOW=1 — src/urban_os/flow.py).
+# NOTE: this is for the FLOW LP, not the lever optimizer — cuOpt cannot evaluate the
+# black-box simulation-in-the-loop search (optimize.py stays grid-search; ADR-0025).
+cuopt-cu12
+
+# cuML GPU KMeans for spatial risk-hotspot clustering (URBANOS_GPU_CLUSTER=1 — src/civic_analyst/cluster.py).
+cuml-cu12

@@ -92,13 +92,16 @@ the tiny demo substrate — same as the Rust accelerator (ADR-0009).
 - **cuDF (RAPIDS) via Polars** — the civic ingest uses **Polars**, whose
   `collect(engine="gpu")` runs on **cuDF**; enabled by `URBANOS_GPU_DF=1`. Falls back to
   Polars-CPU, then pandas. Drop-in: identical rows, golden numbers unchanged.
+- **cuOpt (RAPIDS)** — solves the **optimal evacuation max-flow** on the capacitated
+  substrate (`GET /flow`, `urban_os/flow.py`): the theoretical ceiling the staggered
+  -release sim approaches. A real LP (cuOpt's wheelhouse) — *not* the lever search
+  (cuOpt can't evaluate the black-box sim). `URBANOS_GPU_FLOW=1`; networkx max-flow CPU
+  fallback. Verified on the GB10.
+- **cuML (RAPIDS)** — clusters the scored civic addresses into **spatial risk hotspots**
+  (`GET /clusters`, `civic_analyst/cluster.py`) via GPU KMeans. `URBANOS_GPU_CLUSTER=1`;
+  deterministic numpy KMeans CPU fallback.
 - **Rust core + 128 GB unified memory** — the full graph, live sim state, and the model
   coexist; the kernel steps at **N× real-time** (measure with `make urbanos-accel`).
-- **cuOpt** — *next step, not yet wired.* cuOpt solves LP/MILP/routing, not a black-box
-  *simulation-in-the-loop* search, so it is **not** a drop-in for our lever optimizer;
-  wiring it needs an LP/MILP (or substrate min-cost-flow) reformulation. See the honest
-  scoping in `urban_os/optimize.py`.
-- **cuML** — *not used.* (No clustering step ships today; removed from the claim.)
 
 Design decisions are recorded in [docs/adr/](docs/adr/).
 

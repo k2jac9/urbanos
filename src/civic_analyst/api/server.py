@@ -182,6 +182,19 @@ def addresses() -> list[dict]:
     return out
 
 
+@app.get("/clusters")
+def clusters(k: int = Query(4, ge=1, le=20)) -> list[dict]:
+    """Spatial risk hotspots — the scored addresses clustered into ``k`` geographic
+    zones, hottest first (ADR-0025). cuML GPU KMeans when enabled
+    (``URBANOS_GPU_CLUSTER=1``), else a deterministic numpy KMeans."""
+    from ..cluster import risk_hotspots
+
+    try:
+        return risk_hotspots(addresses(), k=k)
+    except Exception as exc:  # clean 500, no stack-trace leak on the public surface
+        raise HTTPException(status_code=500, detail="clustering failed") from exc
+
+
 @app.get("/analyze")
 def analyze(address: str = Query(..., min_length=3, max_length=200)) -> dict:
     # A bogus/unknown address is a normal, found=False result (not an error). Only a

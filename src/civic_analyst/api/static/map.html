@@ -93,6 +93,19 @@
                border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
                animation: spin .8s linear infinite; vertical-align: -1px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* ADR-0026 Phase 3: dataset-provenance chips (explicit grounding) + a subtle
+       panel-section entrance, unified with the urban_os shell's visual language. */
+    .provchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+    .provchips .pc { font-size: var(--fs-cap); background: var(--surface-sel);
+      border: 1px solid var(--border-2); border-radius: var(--pill); padding: 2px 9px; color: var(--text-soft); }
+    .illus { font-size: var(--fs-xs, 11px); color: var(--text-dim); font-style: italic; margin-top: 4px; }
+    #detail, #digest-out { animation: rise .35s both cubic-bezier(.2,.7,.3,1); }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    /* a11y: honour the OS "reduce motion" setting — collapse all motion to instant. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
     /* Evidence rows — every linked source record; licences are neutral identity context. */
     #evlist { list-style: none; margin: 6px 0 0; padding: 0; }
     #evlist li { font-size: var(--fs-cap); margin: 4px 0; padding: 5px 8px; border-radius: var(--r);
@@ -187,6 +200,12 @@
     <p class="hint" style="margin:4px 0 0">Two independent axes — <b>Safety</b> (food
       inspections) and <b>Activity</b> (open permits). A pin is flagged if <i>either</i>
       axis is elevated.</p>
+    <!-- ADR-0026 Phase 3: explicit dataset provenance + the grounding honesty note,
+         matching the urban_os shell so the two surfaces read as one product. -->
+    <div class="provchips" aria-label="Fused City of Toronto open datasets">
+      <span class="pc">DineSafe</span><span class="pc">Building permits</span><span class="pc">Business licences</span>
+    </div>
+    <p class="illus">3 fused City of Toronto datasets · the local model only phrases these numbers, it cannot invent them.</p>
     <div id="status" class="hint" role="status" aria-live="polite">Loading addresses…</div>
     <h2>Hero pins</h2>
     <div class="quickrow" id="herorow" aria-label="Jump to a hero address">

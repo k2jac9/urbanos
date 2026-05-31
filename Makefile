@@ -1,6 +1,6 @@
 .PHONY: install install-hooks data serve cli test demo demo-public funnel-off funnel-off-all \
         demo-cli demo-data urbanos urbanos-cli urbanos-accel urbanos-bench screenshot \
-        gpu-install gpu-check
+        gpu-install gpu-check llm-check
 
 # demo  -> real downtown-Toronto slice (demo_data/), pins land on the offline map.
 # demo-cli/tests -> synthetic, deterministic fixtures/.
@@ -23,6 +23,12 @@ gpu-install:
 # box with gpu-install done, expect "cugraph" / "cudf-polars"; elsewhere CPU fallback.
 gpu-check:
 	URBANOS_GPU_GRAPH=1 URBANOS_GPU_DF=1 PYTHONPATH=src $(PYTHON) scripts/gpu_check.py
+
+# Prove which LLM runtime serves the narrator (ADR-0027). On the box with the model
+# behind trtllm-serve + LLM_RUNTIME=tensorrt-llm, expect "tensorrt-llm" + a tok/s
+# number; elsewhere it reports the configured runtime or an honest offline result.
+llm-check:
+	PYTHONPATH=src $(PYTHON) scripts/llm_check.py
 
 # Run once per clone (you AND your teammate). Enables the shared pre-push hook
 # that blocks pushing a red test suite. Bypass an emergency push with --no-verify.

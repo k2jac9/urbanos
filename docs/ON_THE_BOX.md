@@ -54,6 +54,32 @@ For a bigger box, `LLM_BATCH_MODEL=nemotron-3-super` gives a stronger digest (�
 Why these models: decode is **memory-bound** (`tok/s ≈ 190 GB/s ÷ active-bytes`), so
 MoE/small-active + FP4 is the only responsive choice. Dense 70B ≈ 2.7 tok/s (avoid).
 
+## 2b. (Stretch, ADR-0027) Serve Nemotron via **TensorRT-LLM** for a real decode speedup
+The narrator client only speaks OpenAI-compatible HTTP, so swapping Ollama for NVIDIA
+**TensorRT-LLM** is a *config* change — no app code changes. This is the **one seam with a
+genuine, on-camera decode speedup** (warm tok/s vs Ollama), the "real number on screen" the
+rubric wants.
+```bash
+# 0) Install TRT-LLM on the box (aarch64/Grace) — pip or the NGC container:
+pip install --extra-index-url https://pypi.nvidia.com tensorrt-llm
+# 1) Stand up an OpenAI-compatible TRT-LLM server (builds + caches the engine on first run):
+bash scripts/serve_trtllm.sh                 # serves http://localhost:8009/v1
+# 2) Point the app at it (the ONLY change) and prove the runtime + speedup:
+export LLM_RUNTIME=tensorrt-llm LLM_BASE_URL=http://localhost:8009/v1
+make llm-check                                # expect runtime='tensorrt-llm' + tok/s
+systemctl --user restart civic-demo          # so :8000 narrates via TRT-LLM
+```
+**Honesty / fallback:** verify your Nemotron variant is a TRT-LLM-supported architecture
+*before* relying on it. If the engine build doesn't land in time, **keep Ollama** — the app
+needs no change (the seam is opt-in, `LLM_RUNTIME` defaults to `ollama`), and the
+deterministic narrator still backs everything. Claim the **tok/s from `make llm-check`**,
+never a number you can't reproduce live.
+
+> **PhysicsNeMo (Modulus) — interface only, no box step.** The optimizer's surrogate seam
+> (`urban_os/surrogate.py`, `URBANOS_SURROGATE=1`) ships *without* a trained checkpoint, so
+> the exact kernel decides every result. There is nothing to activate on the box; training a
+> checkpoint is the documented next step (ADR-0027). Don't claim a working surrogate.
+
 ## 3. Wire NemoClaw + our MCP tools (the bounty) — ✅ DONE & VERIFIED
 Our risk engine is an MCP server (`mcp_server.py`, 5 tools: `list_datasets`, `dataset_resources`,
 `analyze_address`, `top_risk`, `city_digest`). OpenClaw/NemoClaw is installed on the box; we

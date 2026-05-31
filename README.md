@@ -100,6 +100,16 @@ the tiny demo substrate — same as the Rust accelerator (ADR-0009).
 - **cuML (RAPIDS)** — clusters the scored civic addresses into **spatial risk hotspots**
   (`GET /clusters`, `civic_analyst/cluster.py`) via GPU KMeans. `URBANOS_GPU_CLUSTER=1`;
   deterministic numpy KMeans CPU fallback.
+- **TensorRT-LLM** — the narrator client is runtime-agnostic (OpenAI-compatible HTTP), so
+  serving Nemotron behind `trtllm-serve` is a *config* swap: `LLM_RUNTIME=tensorrt-llm` +
+  point `LLM_BASE_URL` at it. `make llm-check` reports the runtime + a real decode tok/s —
+  the one seam with an on-GPU speedup (needs a box-side engine build). Falls back to
+  Ollama / the deterministic narrator. (ADR-0027)
+- **PhysicsNeMo (Modulus)** — a neural **surrogate of the optimizer objective `J(levers)`**
+  for *city-scale* search (`urban_os/surrogate.py`, `URBANOS_SURROGATE=1`). Shipped as an
+  **interface only**: the exact kernel still decides every result (the surrogate's
+  prediction is recorded alongside, never used to choose); a trained checkpoint is the
+  documented next step. Default off → identical to the grid optimizer. (ADR-0027)
 - **Rust core + 128 GB unified memory** — the full graph, live sim state, and the model
   coexist; the kernel steps at **N× real-time** (measure with `make urbanos-accel`).
 

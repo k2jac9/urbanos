@@ -24,3 +24,18 @@ cuopt-cu12
 
 # cuML GPU KMeans for spatial risk-hotspot clustering (URBANOS_GPU_CLUSTER=1 — src/civic_analyst/cluster.py).
 cuml-cu12
+
+# --- Inference + physics-ML seams (ADR-0027), box-side, opt-in, CPU/exact fallback ---
+#
+# TensorRT-LLM — serve the Nemotron narrator behind `trtllm-serve` (OpenAI-compatible),
+# then set LLM_RUNTIME=tensorrt-llm + point LLM_BASE_URL at it. The narrator client is
+# unchanged (it only speaks OpenAI HTTP). NB: TRT-LLM also needs a per-model *engine
+# build* on the box — not a pure pip step — so this line is a marker; follow NVIDIA's
+# aarch64/Grace build for the GB10. This is the one seam with a real on-GPU decode speedup.
+# tensorrt-llm
+#
+# PhysicsNeMo (formerly Modulus) — trained surrogate of the optimizer objective J(levers)
+# for city-scale search (URBANOS_SURROGATE=1 + URBANOS_SURROGATE_CKPT=<path> —
+# src/urban_os/surrogate.py). SHIPPED AS AN INTERFACE ONLY: no trained checkpoint, so the
+# exact kernel remains the reference and decides every result; training is the next step.
+# nvidia-physicsnemo

@@ -15,6 +15,14 @@ deliberately not faked here. The two RAPIDS accelerators that DO genuinely fit a
 wired: ``nx-cugraph`` for the substrate shortest-paths bake (``kernel/state.py``)
 and ``cuDF`` (via Polars' GPU engine) for the civic ingest (``ingest/loader.py``).
 
+**On Modulus/PhysicsNeMo (honest scoping, ADR-0027):** at *city scale* this grid is
+intractable, which is where a learned **surrogate** of ``J(levers)`` belongs. The
+``surrogate`` seam wires that interface with the exact kernel as the reference — when
+``URBANOS_SURROGATE=1`` and a trained PhysicsNeMo checkpoint is present, it predicts
+``J`` per combo and records the prediction alongside the exact value (so accuracy is
+visible), but ``best`` is ALWAYS chosen by the exact kernel ``J`` — an approximate
+number can never reach the UI. Default off → byte-identical to the pure grid.
+
 "Do nothing" is the first value of every lever (convention: index 0), so the
 baseline is always part of the search and the reported saving is honest.
 """
@@ -23,6 +31,7 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass, field
 
+from . import surrogate as _surrogate
 from .kernel.loop import SimResult
 from .kernel.operators import Lens, Lever
 from .kernel.state import Substrate
@@ -106,6 +115,10 @@ class OptResult:
     # deterministic exhaustive search). A future cuOpt LP/MILP reformulation would
     # set "cuopt" — see the module docstring for why cuOpt is not a drop-in.
     solver: str = "grid"
+    # Which backend produced the J *predictions*: "none" (exact kernel only — the
+    # honest default) or "physicsnemo" (a trained Modulus/PhysicsNeMo surrogate also
+    # ran, recorded per-trial as J_surrogate). The surrogate never changes ``best``.
+    surrogate_backend: str = "none"
 
     @property
     def savings(self) -> float:
@@ -163,6 +176,12 @@ def optimize(
     best_params, best_result, best_J = baseline_params, baseline_result, baseline_J
     trials: list[dict] = []
 
+    # Optional PhysicsNeMo/Modulus surrogate (ADR-0027). None unless URBANOS_SURROGATE=1
+    # *and* a trained checkpoint is present — then it predicts J per combo for
+    # transparency, but never changes which combo wins (exact kernel decides).
+    sur = _surrogate.JSurrogate.load([lv.name for lv in levers])
+    _surrogate.SURROGATE_BACKEND = "physicsnemo" if sur is not None else "none"
+
     grids = [lv.values for lv in levers]
     for combo in itertools.product(*grids) if levers else [()]:
         params = dict(base)
@@ -170,7 +189,13 @@ def optimize(
             params[lv.name] = val
         result = run(params)
         J = objective(result, lenses)
-        trials.append({"params": {lv.name: params[lv.name] for lv in levers}, "J": J})
+        trial = {"params": {lv.name: params[lv.name] for lv in levers}, "J": J}
+        if sur is not None:  # advisory only — recorded next to the exact J
+            try:
+                trial["J_surrogate"] = sur.predict(params)
+            except Exception:
+                pass
+        trials.append(trial)
         if J < best_J:
             best_params, best_result, best_J = params, result, J
 
@@ -186,4 +211,5 @@ def optimize(
         baseline_breakdown=cost_breakdown(baseline_result, lenses),
         best_breakdown=cost_breakdown(best_result, lenses),
         solver="grid",
+        surrogate_backend=_surrogate.SURROGATE_BACKEND,
     )

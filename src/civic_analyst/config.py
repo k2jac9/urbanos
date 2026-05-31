@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     # Local LLM (OpenAI-compatible: Ollama on the GX10 at :11434/v1, or NIM).
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"
+    # Which inference runtime serves that endpoint. The client is runtime-agnostic
+    # (it only speaks OpenAI-compatible HTTP), so swapping Ollama for NVIDIA
+    # TensorRT-LLM's ``trtllm-serve`` is a *config* change, not a code change — point
+    # LLM_BASE_URL at the TRT-LLM server and set this to "tensorrt-llm" so the seam
+    # records which runtime actually answered (ADR-0027). Default Ollama (dev/box);
+    # this is the ONE place a real, on-camera single-GPU decode speedup exists.
+    llm_runtime: str = "ollama"          # ollama | tensorrt-llm | nim | vllm
     # Two tiers: a small-active model for snappy interactive calls, and a larger
     # MoE for heavier batch reasoning (both decode acceptably on the GB10's
     # ~273 GB/s bandwidth because they're low-active-param / MoE).

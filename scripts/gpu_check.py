@@ -71,6 +71,13 @@ def main() -> int:
     print(f"[cluster] {len(addrs)} addresses -> {len(hotspots)} hotspots  ->  "
           f"CLUSTER_BACKEND={cluster.CLUSTER_BACKEND}")
 
+    # 5) PhysicsNeMo/Modulus surrogate seam (ADR-0027) — interface + exact-kernel ref.
+    from urban_os import surrogate
+    sur = surrogate.JSurrogate.load(["release_min"])  # any lever name; None unless trained
+    print(f"[surrogate] enabled={surrogate.surrogate_enabled()} loaded={sur is not None}  ->  "
+          f"SURROGATE_BACKEND={'physicsnemo' if sur is not None else 'none'} "
+          f"(exact kernel decides regardless)")
+
     backends = {
         "graph": kstate.GRAPH_BACKEND, "ingest": loader.DF_BACKEND,
         "flow": flow.FLOW_BACKEND, "cluster": cluster.CLUSTER_BACKEND,

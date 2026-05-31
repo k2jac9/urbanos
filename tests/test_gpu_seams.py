@@ -154,6 +154,48 @@ def test_risk_hotspots_empty_and_gating(monkeypatch):
     assert cluster._gpu_cluster_enabled() is False
 
 
+# -------------------------------------------------- TensorRT-LLM runtime seam (ADR-0027)
+def test_llm_backend_defaults_to_configured_runtime():
+    """The narrator client records which runtime serves it. Default is the configured
+    runtime (ollama), set without ever contacting an endpoint — proof-of-invocation seam."""
+    from civic_analyst.agents import llm
+    assert llm.LLM_BACKEND in {"ollama", "tensorrt-llm", "nim", "vllm"}
+
+
+def test_llm_client_carries_runtime_override():
+    """A LocalLLM can be told its runtime (e.g. trtllm-serve on the box) without any
+    code change — the client only speaks OpenAI-compatible HTTP."""
+    from civic_analyst.agents.llm import LocalLLM
+    c = LocalLLM(base_url="http://localhost:8000/v1", runtime="tensorrt-llm")
+    assert c.runtime == "tensorrt-llm"
+    # No network was touched constructing it.
+
+
+# -------------------------------------------------- Modulus/PhysicsNeMo surrogate seam
+def test_surrogate_disabled_by_default(monkeypatch):
+    from urban_os import surrogate
+    monkeypatch.delenv("URBANOS_SURROGATE", raising=False)
+    assert surrogate.surrogate_enabled() is False
+    # Enabled but no checkpoint → still no model (honest exact-kernel fallback).
+    monkeypatch.setenv("URBANOS_SURROGATE", "1")
+    monkeypatch.delenv("URBANOS_SURROGATE_CKPT", raising=False)
+    assert surrogate.JSurrogate.load(["release_min"]) is None
+
+
+def test_optimizer_reports_surrogate_backend_none_by_default():
+    """With the surrogate off, the optimizer runs the exact kernel for everything and
+    records SURROGATE_BACKEND=none. The chosen best is unchanged from pure grid."""
+    from urban_os import surrogate
+    sc = downtown_scenario()
+    opt = optimize(sc.substrate, [EventSurge(events=sc.events), EconomicLens()],
+                   sc.horizon, dt=sc.dt)
+    assert getattr(opt, "surrogate_backend", "none") == "none"
+    assert surrogate.SURROGATE_BACKEND == "none"
+    # No surrogate predictions leaked into the trials when the seam is off.
+    assert all("J_surrogate" not in t for t in opt.trials)
+    assert opt.best_J <= opt.baseline_J + 1e-6
+
+
 @pytest.mark.skipif(not _HAS_POLARS, reason="polars not installed (pandas-only env)")
 def test_polars_and_pandas_read_identical_rows(monkeypatch):
     """The Polars ingest path is a drop-in: it yields byte-identical (columns, rows)

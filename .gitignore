@@ -42,3 +42,7 @@ package-lock.json
 # Downloaded open-data files (fetched via scripts/download_data.py)
 data/raw/
 data/cache/
+
+# RAPIDS GPU runtime logs (cuFile / kvikio GPU Direct Storage) — written by the
+# GPU stack on the box; not source. See requirements-gpu.txt / ADR-0024.
+cufile.log

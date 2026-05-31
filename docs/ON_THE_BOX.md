@@ -52,18 +52,35 @@ For a bigger box, `LLM_BATCH_MODEL=nemotron-3-super` gives a stronger digest (�
 Why these models: decode is **memory-bound** (`tok/s ≈ 190 GB/s ÷ active-bytes`), so
 MoE/small-active + FP4 is the only responsive choice. Dense 70B ≈ 2.7 tok/s (avoid).
 
-## 3. Wire NemoClaw + our MCP tools (the bounty)
-Our risk engine is already an MCP server (`mcp_server.py`, 4 tools) and config is committed
-at `config/nemoclaw.mcp.json`.
+## 3. Wire NemoClaw + our MCP tools (the bounty) — ✅ DONE & VERIFIED
+Our risk engine is an MCP server (`mcp_server.py`, 5 tools: `list_datasets`, `dataset_resources`,
+`analyze_address`, `top_risk`, `city_digest`). OpenClaw/NemoClaw is installed on the box; we
+registered the server and ran a local **Nemotron** agent that called `top_risk` and answered with
+data **matching the tool exactly** (grounded — the Verifiers guarantee at the agent layer).
+
+Reproduce (run as the box user that owns `~/.openclaw`):
 ```bash
-python -m civic_analyst.mcp_server   # sanity: starts a stdio MCP server (Ctrl-C to stop)
+# 1) Register our MCP server. OpenClaw BLOCKS PYTHONPATH for stdio-startup safety, so set it
+#    *inside* a shell wrapper (not via the env map), with absolute paths + the repo venv:
+openclaw mcp set toronto-civic '{"command":"/bin/sh","args":["-c","cd /home/asus/dev/spark-hack-toronto && PYTHONPATH=src DATA_DIR=demo_data exec .venv/bin/python -m civic_analyst.mcp_server"],"env":{"LLM_BASE_URL":"http://localhost:11434/v1","LLM_MODEL":"nemotron-3-nano"}}'
+openclaw mcp list           # → toronto-civic
+
+# 2) Give OpenClaw a working local model (Ollama/Nemotron) and allow-list it for the agent:
+#    in ~/.openclaw/openclaw.json add a provider `ollama`
+#    (baseUrl http://localhost:11434/v1, api openai-completions, model nemotron-3-nano),
+#    and add "ollama/nemotron-3-nano" to agents.defaults.models.
+
+# 3) Demo — Nemotron orchestrating our tools, on-device:
+openclaw agent --local --model ollama/nemotron-3-nano \
+  -m "Use the toronto-civic tools: top 3 riskiest addresses and why."
 ```
-Install **NemoClaw** via the DGX Spark playbook (authoritative: build.nvidia.com/spark and
-the NVIDIA/dgx-spark-playbooks repo — follow their exact installer). Point NemoClaw at
-`config/nemoclaw.mcp.json` so it launches our server and discovers the tools, with Nemotron
-as the model + OpenShell sandbox. Smoke test:
-> "Use the toronto-civic tools: what are the top-3 riskiest addresses and why?"
-Expect it to call `top_risk` → `analyze_address` and answer with source-backed results.
+Gotchas (all hit + fixed): **PYTHONPATH is stripped** → shell-wrap it; a `--model` override must be
+**allow-listed per agent**; OpenClaw's default model wants **vLLM on :8000** — the *same port as the
+civic demo* — so use the **Ollama :11434** path and the agent + demo coexist. Editing
+`~/.openclaw/openclaw.json` is additive and reversible (OpenClaw writes a `.bak` on each change).
+
+Original from-scratch install (if the box is ever rebuilt): NemoClaw via the DGX Spark playbook
+(authoritative: build.nvidia.com/spark + the NVIDIA/dgx-spark-playbooks repo).
 
 ## 4. Pre-demo backup
 - Record a 60-sec screen capture of the working map + click-to-verify (WiFi insurance).

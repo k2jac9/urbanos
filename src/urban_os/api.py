@@ -390,6 +390,77 @@ def _four_lens_J(stack, result) -> float:
     return float(sum(float(ln.cost(result)) for ln in stack))
 
 
+# ADR-0019: every benefit number we surface carries its definition, so the UI (and
+# anyone reading the JSON) can label it. The audits found three differently-derived
+# "benefit" figures shown unlabeled; these strings are the single source of truth
+# for what each one means. Keys here MUST match the keys returned by the endpoints.
+BENEFIT_DEFINITIONS: dict[str, str] = {
+    "j_avoided": (
+        "Reduction in the single combined objective J (the one number the optimizer "
+        "minimises). Conservative and double-count-free: this is the honest headline "
+        "and equals the narrator's 'net intervention benefit'."
+    ),
+    "cross_domain_benefit": (
+        "Additive sum of the per-domain dollar improvements (transit + public safety "
+        "+ local business). Larger than j_avoided because the domains are summed "
+        "independently and can overlap — an upper, cross-domain framing, not a single "
+        "objective. Computed once and shared by /lenses and /optimize so they agree."
+    ),
+    "combined_benefit": (
+        "Deprecated alias retained for the current UI. On /optimize it equals "
+        "cross_domain_benefit; on /lenses it is the four-lens J reduction "
+        "(base_J - cur_J). Prefer the explicit j_avoided / cross_domain_benefit keys."
+    ),
+}
+
+
+def _cross_domain_components(
+    sc, *, release: float, shelter: float, safety: bool = True, business: bool = True
+) -> dict:
+    """Additive per-domain dollar improvements of ``(release, shelter)`` vs do-nothing.
+
+    SINGLE SOURCE OF TRUTH for the ``cross_domain_benefit`` headline used by BOTH
+    /lenses and /optimize, so the two surfaces can never disagree (contract-tested
+    in ``test_benefit_semantics``). Honest framing: this is *additive* across domains
+    — the components are summed independently and may overlap, so it is deliberately
+    NOT the conservative single-objective number (see ``j_avoided``).
+
+    - transit_savings: J reduction over the optimizer's weather-aware stack.
+    - safety_reduction: civic SafetyLens cost avoided (0 when the lens is toggled off).
+    - business_recovered: BusinessFlow loss avoided (0 when toggled off).
+    """
+    # Transit: J over the exact stack the optimizer/narrator search (incl. WeatherLens).
+    cur_t, base_t = _lenses(sc), _lenses(sc)
+    cur_tr = Simulation(sc.substrate, cur_t,
+        params={"release_minutes": release, "shelter_fraction": shelter}, dt=sc.dt).run(sc.horizon)
+    base_tr = Simulation(sc.substrate, base_t,
+        params={"release_minutes": 0.0, "shelter_fraction": 0.0}, dt=sc.dt).run(sc.horizon)
+    transit_savings = objective(base_tr, base_t) - objective(cur_tr, cur_t)
+
+    # Safety + business: the civic SafetyLens + BusinessFlow at the same levers.
+    cur_s, base_s = _four_lens_stack(sc), _four_lens_stack(sc)
+    cur4 = Simulation(sc.substrate, cur_s,
+        params={"release_minutes": release, "shelter_fraction": shelter}, dt=sc.dt).run(sc.horizon)
+    base4 = Simulation(sc.substrate, base_s,
+        params={"release_minutes": 0.0, "shelter_fraction": 0.0}, dt=sc.dt).run(sc.horizon)
+    cur_safety = next(ln for ln in cur_s if ln.name == "safety")
+    base_safety = next(ln for ln in base_s if ln.name == "safety")
+    safety_reduction = (
+        float(base_safety.cost(base4)) - float(cur_safety.cost(cur4)) if safety else 0.0
+    )
+    business_recovered = (
+        float(sum(base4.series("business_lost"))) - float(sum(cur4.series("business_lost")))
+        if business else 0.0
+    )
+    total = transit_savings + safety_reduction + business_recovered
+    return {
+        "transit_savings": transit_savings,
+        "safety_reduction": safety_reduction,
+        "business_recovered": business_recovered,
+        "total": total,
+    }
+
+
 @app.get("/lenses")
 def lenses_endpoint(
     release_minutes: float = Query(0.0, ge=0.0, le=20.0),
@@ -438,19 +509,12 @@ def lenses_endpoint(
     base_J = _four_lens_J(base_stack, baseline)
     peak = current.peak_congestion()
 
-    # Additive cross-domain benefit — the SAME composition /optimize reports as its
-    # headline "combined_benefit": 3-lens transit-J savings (the WeatherLens/shelter
-    # stack the optimizer searches) + civic-safety reduction + business recovered.
-    # The UI's combined counter ticks to THIS so the live ripple and the optimizer's
-    # reveal agree on one number (two more sims; still no grid search).
-    t_cur_stack, t_base_stack = _lenses(sc), _lenses(sc)
-    t_cur = Simulation(sc.substrate, t_cur_stack,
-        params={"release_minutes": release, "shelter_fraction": shelter}, dt=sc.dt).run(sc.horizon)
-    t_base = Simulation(sc.substrate, t_base_stack,
-        params={"release_minutes": 0.0, "shelter_fraction": 0.0}, dt=sc.dt).run(sc.horizon)
-    transit_savings = objective(t_base, t_base_stack) - objective(t_cur, t_cur_stack)
-    safety_reduction = float(safety_lens.cost(baseline)) - float(safety_lens.cost(current))
-    cross_domain_benefit = transit_savings + safety_reduction + (base_lost - cur_lost)
+    # Additive cross-domain benefit — computed by the shared ``_cross_domain_components``
+    # helper that /optimize ALSO uses, so the live ripple and the optimizer's reveal
+    # report the identical number at the same levers (contract-tested). It is the sum
+    # of transit-J savings + civic-safety reduction + business recovered; labelled in
+    # ``benefit_definitions`` as additive (not the conservative single-objective J).
+    comp = _cross_domain_components(sc, release=release, shelter=shelter)
 
     return _native(
         {
@@ -468,11 +532,13 @@ def lenses_endpoint(
             },
             "combined_cost": _r(cur_J, 2),
             "baseline_combined": _r(base_J, 2),
-            # Single-objective J avoided (the conservative, no-double-count number).
+            # Conservative single-objective: four-lens J avoided (no double-count).
+            # Kept under the legacy ``combined_benefit`` key; see benefit_definitions.
             "combined_benefit": _r(base_J - cur_J, 2),
-            # Additive cross-domain benefit (matches /optimize's headline ~$458k) —
-            # what the shell's combined-$ counter displays.
-            "cross_domain_benefit": _r(cross_domain_benefit, 2),
+            # Canonical additive headline — shared with /optimize, labelled as additive.
+            "cross_domain_benefit": _r(comp["total"], 2),
+            "cross_domain_components": {k: _r(v, 2) for k, v in comp.items() if k != "total"},
+            "benefit_definitions": BENEFIT_DEFINITIONS,
         }
     )
 
@@ -519,9 +585,13 @@ def optimize_endpoint(
     needs for the before/after panel (insight sentence, peaks, savings, levers).
 
     ``safety``/``business`` toggle whether each cross-domain lens counts toward the
-    reported ``combined_benefit`` (and appears in ``cross_domain``) — so the user
+    reported ``cross_domain_benefit`` (and appears in ``cross_domain``) — so the user
     picks which urban concerns to value. The core transit optimization is identical
-    regardless; only the reported combined benefit changes with the toggles."""
+    regardless; only the reported cross-domain benefit changes with the toggles.
+
+    Two clearly-labelled benefit numbers (ADR-0019, see ``benefit_definitions``):
+    ``j_avoided`` (the conservative single-objective J reduction = the narrator's net
+    benefit) and ``cross_domain_benefit`` (the additive cross-domain framing)."""
     sc = _scenario()
     lenses = _lenses(sc)
     try:
@@ -540,13 +610,17 @@ def optimize_endpoint(
         "best_peak": _peak_dict(opt.best_result),
         "best_params": {k: _r(v, 3) for k, v in opt.best_params.items()},
         "savings": _r(opt.savings, 2),
+        # Conservative single-objective headline (= ``savings``), explicitly named so
+        # the UI can label it distinctly from the additive cross_domain_benefit below.
+        "j_avoided": _r(opt.savings, 2),
         # Surface the J decomposition so the chosen (release, shelter) is
         # reproducible from on-screen dollar terms (delay/hold/exposure/staffing/
         # safety/total), not just the headline saving.
         "cost_breakdown": best_breakdown,
         "baseline_cost_breakdown": baseline_breakdown,
         # The same release, scored across the user-selected cross-domain lenses.
-        **_cross_domain_block(sc, opt.best_params, opt.savings, safety, business),
+        **_cross_domain_block(sc, opt.best_params, safety, business),
+        "benefit_definitions": BENEFIT_DEFINITIONS,
     }
 
 
@@ -558,24 +632,35 @@ def _cross_domain_safe(sc, best_params: dict):
         return None
 
 
-def _cross_domain_block(sc, best_params: dict, savings: float,
+def _cross_domain_block(sc, best_params: dict,
                         safety: bool, business: bool) -> dict:
-    """Cross-domain panel data filtered by the user's lens toggles, plus the
-    combined benefit = transit savings + the ENABLED lenses' contributions. The
-    user turning a lens off literally removes its dollars from the combined J."""
+    """Cross-domain panel + the canonical additive benefit at the optimizer's levers.
+
+    The headline ``cross_domain_benefit`` comes from the SHARED
+    ``_cross_domain_components`` helper — the same one /lenses uses — so both surfaces
+    report the identical additive number at the same levers (contract-tested in
+    ``test_benefit_semantics``). Toggling a lens off removes its dollars from the
+    additive total. ``combined_benefit`` is retained as a deprecated alias for the
+    current UI (see ``BENEFIT_DEFINITIONS``)."""
+    release = float(best_params.get("release_minutes", 0.0))
+    shelter = float(best_params.get("shelter_fraction", 0.0))
+    comp = _cross_domain_components(
+        sc, release=release, shelter=shelter, safety=safety, business=business
+    )
+    # Per-lens baseline/best panel (display only) — never breaks the core response.
     full = _cross_domain_safe(sc, best_params)
-    combined = float(savings)
     cd = None
     if full:
         cd = {}
         if safety and full.get("safety"):
             cd["safety"] = full["safety"]
-            combined += full["safety"]["baseline"] - full["safety"]["best"]
         if business and full.get("business"):
             cd["business"] = full["business"]
-            combined += full["business"]["recovered"]
     return {
         "cross_domain": cd,
         "enabled": {"safety": bool(safety), "business": bool(business)},
-        "combined_benefit": _r(combined, 2),
+        "cross_domain_benefit": _r(comp["total"], 2),
+        "cross_domain_components": {k: _r(v, 2) for k, v in comp.items() if k != "total"},
+        # Deprecated alias of cross_domain_benefit (see benefit_definitions).
+        "combined_benefit": _r(comp["total"], 2),
     }

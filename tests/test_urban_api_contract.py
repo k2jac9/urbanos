@@ -257,6 +257,27 @@ def test_simulate_rejects_nan_release():
     assert r.status_code == 422
 
 
+def test_benefit_semantics_lenses_and_optimize_agree():
+    """ADR-0019: the additive ``cross_domain_benefit`` is computed by ONE shared
+    helper, so /optimize and /lenses MUST report the identical number at the same
+    levers. Pins the fix for the audit's F-4 (three differently-derived benefit
+    numbers shown unlabelled)."""
+    opt = _get("/optimize")
+    bp = opt["best_params"]
+    ln = _get(
+        "/lenses",
+        release_minutes=bp["release_minutes"],
+        shelter_fraction=bp.get("shelter_fraction", 0.0),
+    )
+    # Same definition, same levers, one helper → equal (allow 2-dp rounding noise).
+    assert abs(ln["cross_domain_benefit"] - opt["cross_domain_benefit"]) <= 0.01
+    # The conservative single-objective number is never larger than the additive one.
+    assert opt["j_avoided"] <= opt["cross_domain_benefit"] + 0.01
+    # Both surfaces ship the definitions block so every number is self-labelled.
+    for body in (opt, ln):
+        assert "cross_domain_benefit" in body["benefit_definitions"]
+
+
 def test_simulate_accepts_boundary_values():
     assert client.get("/simulate", params={"release_minutes": 0}).status_code == 200
     assert client.get("/simulate", params={"release_minutes": 20}).status_code == 200
@@ -279,12 +300,15 @@ def test_optimize_shape_is_pinned():
     assert set(body.keys()) == {
         "insight", "grounded", "figures", "optimization",
         "baseline_peak", "best_peak", "best_params", "savings",
+        "j_avoided",
         "cost_breakdown", "baseline_cost_breakdown",
-        "cross_domain", "enabled", "combined_benefit",
+        "cross_domain", "enabled", "cross_domain_benefit",
+        "cross_domain_components", "combined_benefit", "benefit_definitions",
     }
     # Cross-domain extras: the same release scored across the user-selected Safety +
     # Business lenses. `cross_domain` carries only the enabled lenses (well-formed
-    # if present); `combined_benefit` = transit savings + the enabled contributions.
+    # if present); `cross_domain_benefit` = transit savings + the enabled contributions
+    # (ADR-0019: computed by the shared helper, labelled in benefit_definitions).
     cd = body["cross_domain"]
     if cd:
         if "safety" in cd:
@@ -292,6 +316,13 @@ def test_optimize_shape_is_pinned():
         if "business" in cd:
             assert cd["business"]["recovered"] >= 0
     assert set(body["enabled"]) == {"safety", "business"}
+    # ADR-0019: j_avoided is the conservative single-objective number (= savings);
+    # combined_benefit is retained as a deprecated alias of cross_domain_benefit.
+    assert body["j_avoided"] == body["savings"]
+    assert body["combined_benefit"] == body["cross_domain_benefit"]
+    assert set(body["benefit_definitions"]) >= {
+        "j_avoided", "cross_domain_benefit", "combined_benefit",
+    }
     assert isinstance(body["combined_benefit"], (int, float))
     assert body["combined_benefit"] >= body["savings"]  # enabled lenses only add value
     assert isinstance(body["insight"], str) and body["insight"].strip()

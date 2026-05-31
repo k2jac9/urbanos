@@ -54,6 +54,11 @@
     .ba .card .v { font-size: 26px; font-weight: 700; }
     .v.bad { color: #f87171; } .v.good { color: #4ade80; }
     .save { font-size: 22px; font-weight: 700; color: #4ade80; margin-top: 8px; }
+    /* Optimizer card goes stale when the user moves the levers off the chosen
+       intervention — dim it and show a "re-run" note so it never contradicts the
+       live map/breakdown. */
+    #opt-out.stale { opacity: .45; filter: saturate(.4); }
+    .superseded { font-size: 12px; font-weight: 700; color: #fbbf24; margin: 6px 0 2px; }
     .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 6px;
                border: 2px solid #334155; border-top-color: #38bdf8; border-radius: 50%;
                animation: spin .8s linear infinite; vertical-align: -1px; }
@@ -121,6 +126,10 @@
       <tbody id="readout-body"></tbody>
     </table>
 
+    <h2>Why — objective J breakdown (live)</h2>
+    <p class="hint">Cost of the current levers, recomputed on every change.</p>
+    <table class="breakdown" id="live-breakdown" aria-label="Live objective J cost breakdown for the current levers"><tbody id="live-breakdown-body"></tbody></table>
+
     <h2>Optimize</h2>
     <div class="row">
       <button class="act" id="opt-btn" type="button">Find best intervention</button>
@@ -148,12 +157,26 @@
     let WEIGHT = 'congestion'; // 'congestion' | 'risk' — what the heatmap weighs
     let RELEASE = 0;      // staggered-release lever (minutes)
     let SHELTER = 0;      // shelter-coverage lever (fraction 0..1)
+    let BEST_PARAMS = null; // last optimizer pick {release_minutes, shelter_fraction}
 
     // ONE rounding convention per quantity so the same number reads identically
     // everywhere (insight prose, cards, readout): congestion/risk to 2 dp, money
     // to whole $k matching the narrator's figures.
     const mult2 = (x) => Number(x || 0).toFixed(2);          // 0.94×
     const dollarsK = (x) => '~$' + Math.round(Number(x || 0) / 1000) + 'k';
+
+    // ONE rendering of the J cost-breakdown (same labels + $k rounding) so the
+    // LIVE table (from /simulate) and the optimizer card (from /optimize) read
+    // identically — the live one updates on every lever change, never goes stale.
+    function breakdownRowsHTML(cb) {
+      cb = cb || {};
+      return [
+        ['Commuter delay', cb.delay], ['Hold (release)', cb.hold],
+        ['Rain exposure', cb.exposure], ['Shelter staffing', cb.staffing],
+        ['Crowd safety', cb.safety],
+      ].map(([k, v]) => '<tr><td>' + k + '</td><td>' + dollarsK(v) + '</td></tr>').join('') +
+        '<tr class="total"><td>Total J</td><td>' + dollarsK(cb.total) + '</td></tr>';
+    }
 
     // Green -> amber -> red by congestion; >1 (over capacity) is full red.
     function colorFor(c) {
@@ -311,10 +334,34 @@
       if (FRAME > SIM.frames.length - 1) FRAME = 0;
       slider.value = String(FRAME);
       refreshNodes();
+      // Live J-breakdown for THESE exact levers — updates on every lever change.
+      document.getElementById('live-breakdown-body').innerHTML =
+        breakdownRowsHTML(SIM.cost_breakdown);
+      // If the levers have moved off the optimizer's pick, mark its card stale.
+      refreshOptStale();
       const pk = SIM.peak;
       document.getElementById('status').innerHTML =
         'Peak congestion <b>' + mult2(pk.congestion) + '×</b> at <b>' + esc(pk.label) +
         '</b> (t=' + pk.t + 'm).';
+    }
+
+    // BUG-B: the optimizer card recommends a specific (release, shelter). Once the
+    // user moves the levers away from it, the card no longer describes what's on
+    // the map — dim it + show a "superseded" note. Setting the levers back to the
+    // exact pick un-dims it. No-op until an optimize run has populated BEST_PARAMS.
+    function atBestParams() {
+      if (!BEST_PARAMS) return false;
+      const relOk = Math.abs(Number(RELEASE) - Number(BEST_PARAMS.release_minutes || 0)) < 1e-6;
+      const shelOk = Math.abs(Number(SHELTER) - Number(BEST_PARAMS.shelter_fraction || 0)) < 1e-6;
+      return relOk && shelOk;
+    }
+    function refreshOptStale() {
+      const out = document.getElementById('opt-out');
+      const note = document.getElementById('opt-superseded');
+      if (!BEST_PARAMS || !out || !out.firstChild) return;  // nothing optimized yet
+      const stale = !atBestParams();
+      out.classList.toggle('stale', stale);
+      if (note) note.style.display = stale ? '' : 'none';
     }
 
     // Time controls
@@ -370,6 +417,7 @@
     const optOut = document.getElementById('opt-out');
     optBtn.addEventListener('click', async () => {
       optBtn.disabled = true;
+      optOut.classList.remove('stale');  // fresh run is never stale
       optOut.innerHTML = '<p class="hint"><span class="spinner"></span>Searching levers + writing the briefing…</p>';
       try {
         const d = await (await fetch('/optimize')).json();
@@ -378,16 +426,8 @@
         const shelFrac = d.best_params.shelter_fraction != null ? d.best_params.shelter_fraction : 0;
         const shelPct = Math.round(shelFrac * 100);
         const cb = d.cost_breakdown || {};
-        // Money is shown to whole $k everywhere to match the narrator's figures
-        // (one rounding convention per quantity).
-        const breakdownRows = [
-          ['Commuter delay', cb.delay], ['Hold (release)', cb.hold],
-          ['Rain exposure', cb.exposure], ['Shelter staffing', cb.staffing],
-          ['Crowd safety', cb.safety],
-        ].map(([k, v]) =>
-          '<tr><td>' + k + '</td><td>' + dollarsK(v) + '</td></tr>').join('') +
-          '<tr class="total"><td>Total J</td><td>' + dollarsK(cb.total) + '</td></tr>';
         optOut.innerHTML =
+          '<div class="superseded" id="opt-superseded" style="display:none">⚠ superseded — re-run to refresh (levers moved off the recommendation)</div>' +
           '<div class="insight"><span class="tag ' + (d.grounded ? 'grounded">✓ grounded' : 'fallback">⚠ template') +
           '</span> <span class="hint" title="Every figure is checked against the simulation run — not a claim that the optimizer itself is sound end-to-end.">ⓘ</span>' +
           '<br>' + esc(d.insight) + '</div>' +
@@ -400,13 +440,15 @@
           '<div class="save">Net benefit ' + dollarsK(d.savings) + '</div>' +
           '<div class="lbl">Why — objective J breakdown (best run)</div>' +
           '<table class="breakdown" aria-label="Objective J cost breakdown for the recommended run"><tbody>' +
-          breakdownRows + '</tbody></table>';
+          breakdownRowsHTML(cb) + '</tbody></table>';
+        // Remember the pick so a later manual lever move can invalidate this card.
+        BEST_PARAMS = { release_minutes: Number(relMin), shelter_fraction: Number(shelFrac) };
         // Reflect BOTH recommended levers on the map + sliders.
         rel.value = String(relMin);
         document.getElementById('release-val').textContent = relMin + 'm';
         shel.value = String(shelFrac);
         document.getElementById('shelter-val').textContent = shelPct + '%';
-        stop(); loadSim(Number(relMin), Number(shelFrac));
+        stop(); loadSim(Number(relMin), Number(shelFrac));  // loadSim → refreshOptStale (not stale here)
       } catch (err) {
         optOut.innerHTML = '<div class="err" role="alert">Optimize failed (' + esc(err.message) + '). The map + slider still work.</div>';
       } finally {

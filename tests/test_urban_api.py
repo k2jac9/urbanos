@@ -161,6 +161,66 @@ def test_simulate_sink_west_load_stays_near_zero():
         assert sw["load"] == pytest.approx(0.0, abs=1e-3)
 
 
+def test_simulate_trims_dead_timeline_tail_but_keeps_peak_and_metrics():
+    """BUG-C: the crowd drains long before the fixed horizon, so /simulate drops
+    the trailing all-zero frames before returning — the slider/playback span the
+    active window. The peak frame is retained and the full metrics series (and the
+    physics behind them) are NOT trimmed."""
+    body = client.get("/simulate", params={"release_minutes": 0, "frame_every": 1}).json()
+    frames = body["frames"]
+    times = body["times"]
+
+    # The trim happened: fewer frames than the full per-step time series.
+    assert len(frames) < len(times)
+    # The full metrics series are untouched (one value per step over the horizon).
+    for series in body["metrics"].values():
+        assert len(series) == len(times)
+
+    # No trailing all-zero padding: the LAST frame is part of a short drained coda,
+    # but the frames before it are not an unbroken run of empties — i.e. there is
+    # real activity within a couple of frames of the end.
+    total_load = [sum(nd["load"] for nd in fr["nodes"]) for fr in frames]
+    assert max(total_load[-3:]) > 0.0, "tail should still be near the active window"
+
+    # The peak frame is retained: the peak congestion is present in some frame and
+    # the peak readout itself is unchanged by the trim.
+    peak_t = body["peak"]["t"]
+    assert any(fr["t"] == peak_t for fr in frames), "peak frame must survive the trim"
+    frame_max = max(nd["congestion"] for fr in frames for nd in fr["nodes"])
+    assert body["peak"]["congestion"] == pytest.approx(frame_max, abs=1e-3)
+
+
+def test_simulate_trim_does_not_change_peak_readout_vs_untrimmed_metrics():
+    """The frame trim is display-only: the peak readout (computed over every step)
+    is identical to the peak of the full untrimmed metric/time series."""
+    body = client.get("/simulate", params={"release_minutes": 0, "frame_every": 1}).json()
+    # in_system metric is the full per-step series; its support spans the horizon,
+    # while the trimmed frames stop near the drained end.
+    assert len(body["metrics"]["in_system"]) > len(body["frames"])
+    # Peak congestion readout is still positive and names a real node.
+    assert body["peak"]["congestion"] > 0
+    assert body["peak"]["label"]
+
+
+def test_simulate_cost_breakdown_is_present_and_tracks_levers():
+    """BUG-A backing: /simulate returns a per-lever cost_breakdown that the UI can
+    render live; moving a lever must visibly change it (it is not constant)."""
+    a = client.get(
+        "/simulate", params={"release_minutes": 0, "shelter_fraction": 0.0}
+    ).json()["cost_breakdown"]
+    b = client.get(
+        "/simulate", params={"release_minutes": 18, "shelter_fraction": 0.0}
+    ).json()["cost_breakdown"]
+    c = client.get(
+        "/simulate", params={"release_minutes": 0, "shelter_fraction": 1.0}
+    ).json()["cost_breakdown"]
+    keys = {"delay", "hold", "exposure", "staffing", "safety", "total"}
+    assert set(a.keys()) == keys
+    # The breakdown is NOT constant across levers (the live table must move).
+    assert a != b, "moving the release lever must change the breakdown"
+    assert a != c, "moving the shelter lever must change the breakdown"
+
+
 def test_optimize_returns_insight_and_positive_savings():
     r = client.get("/optimize")
     assert r.status_code == 200

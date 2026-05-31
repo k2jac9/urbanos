@@ -102,6 +102,10 @@ def _figures(opt: OptResult, event_end: float) -> dict:
         "base_mult": round(base_rho, 1),                        # e.g. 2.5 (×capacity)
         "best_mult": round(best_rho, 1),
         "minutes_after": max(0, round(float(base_peak["t"]) - float(event_end))),
+        # Absolute clock minute of the peak (the real ``peak.t``) so the sentence
+        # can disambiguate "N minutes after full-time" from an absolute clock time.
+        # Both are genuine simulation figures, both whitelisted by the guard.
+        "peak_t_abs": max(0, round(float(base_peak["t"]))),
         "reduction_pct": reduction,
         "release_min": round(float(opt.best_params.get("release_minutes", 0))),
         # Shelter coverage the optimizer chose, as a whole-number percentage. The
@@ -136,9 +140,9 @@ def _intervention_phrase(f: dict) -> str:
 def _deterministic(f: dict) -> str:
     return (
         f"Doing nothing, {_station_phrase(f['station'])} peaks at {f['base_mult']}x "
-        f"its safe capacity about {f['minutes_after']} minutes after full-time; "
-        f"{_intervention_phrase(f)} cuts that peak by {f['reduction_pct']}% for a net "
-        f"intervention benefit of about ${f['savings_k']}k."
+        f"its safe capacity about {f['minutes_after']} minutes after full-time "
+        f"(t={f['peak_t_abs']} min); {_intervention_phrase(f)} cuts that peak by "
+        f"{f['reduction_pct']}% for a net intervention benefit of about ${f['savings_k']}k."
     )
 
 
@@ -206,7 +210,8 @@ def build_insight(
         "FIGURES:\n"
         f"- bottleneck station: {station}\n"
         f"- peak load without action: {f['base_mult']}x safe capacity\n"
-        f"- timing of peak: {f['minutes_after']} minutes after full-time\n"
+        f"- timing of peak: {f['minutes_after']} minutes after full-time "
+        f"(absolute clock t={f['peak_t_abs']} min)\n"
         f"- recommended staggered release: {f['release_min']} minutes\n"
         f"- recommended shelter coverage: {f['shelter_pct']}%\n"
         f"- peak reduced by: {f['reduction_pct']}%\n"

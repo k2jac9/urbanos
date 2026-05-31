@@ -275,7 +275,7 @@ def test_optimize_shape_is_pinned():
     assert isinstance(body["savings"], (int, float)) and body["savings"] > 0
 
     fig_keys = {
-        "station", "base_mult", "best_mult", "minutes_after",
+        "station", "base_mult", "best_mult", "minutes_after", "peak_t_abs",
         "reduction_pct", "release_min", "shelter_pct", "baseline_cost_k",
         "savings_k",
     }

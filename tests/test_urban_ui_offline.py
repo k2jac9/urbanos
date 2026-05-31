@@ -158,6 +158,55 @@ def test_ui_hook_present(page: str, element_id: str) -> None:
     assert element_id in page, f"missing required UI hook: {element_id}"
 
 
+# ---- 4. The unified shell ("/" → os.html) is the ACTUAL public page and must
+#         hold the SAME offline invariant + a11y, plus the ADR-0026 clarity adds.
+#         (Previously only /classic was covered — this closes that gap.) ----
+
+
+@pytest.fixture(scope="module")
+def shell() -> str:
+    """The unified Urban OS shell served at ``/`` (os.html) — the real public page."""
+    r = client.get("/")
+    assert r.status_code == 200
+    return r.text
+
+
+def test_shell_no_known_cdn_or_tile_hosts(shell: str) -> None:
+    hits = [s for s in _FORBIDDEN_SUBSTRINGS if s in shell.lower()]
+    assert not hits, f"shell references forbidden external host(s): {hits}"
+
+
+def test_shell_no_external_http_urls(shell: str) -> None:
+    scrubbed = shell.replace("${location.origin}", "")
+    urls = re.findall(r"https?://[A-Za-z0-9.\-]+", scrubbed)
+    allowed = {"https://www.openstreetmap.org", "http://www.openstreetmap.org"}
+    bad = [u for u in urls if u not in allowed]
+    assert not bad, f"shell must not reference external URLs, found: {bad}"
+
+
+def test_shell_references_vendored_assets(shell: str) -> None:
+    for asset in ("/static/vendor/maplibre-gl.js", "/static/vendor/tokens.css",
+                  "/static/toronto.pmtiles"):
+        assert asset in shell, f"shell missing offline asset {asset}"
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        '<h1 id="wordmark"',                     # a11y: real <h1>
+        'class="skip-link"',                     # a11y: skip link
+        'aria-label="Simulation time frame"',    # a11y: labelled time scrubber
+        'prefers-reduced-motion',                # a11y: motion honours OS pref (ADR-0026)
+        'id="helpbtn"',                          # clarity: "How it works" affordance
+        'dialog id="help"',                      # clarity: orientation/legend/provenance
+        'class="legend"',                        # clarity: colour-encoding legend
+        'class="chip"',                          # clarity: dataset provenance chips
+    ],
+)
+def test_shell_clarity_and_a11y_present(shell: str, marker: str) -> None:
+    assert marker in shell, f"shell missing clarity/a11y element: {marker}"
+
+
 def test_heatmap_layer_is_wired(page: str) -> None:
     """A real MapLibre heatmap layer (not just colored circles) must exist."""
     assert "'heatmap'" in page or '"heatmap"' in page

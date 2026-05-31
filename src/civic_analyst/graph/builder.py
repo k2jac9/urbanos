@@ -11,6 +11,24 @@ import re
 import networkx as nx
 
 
+# Toronto bounding box (lat 43.5–43.9, lng −79.7 to −79.1). A swapped lat/lng or a
+# coordinate from another city drops a pin in the ocean, so coordinates outside this
+# box are rejected at the boundary and treated as missing. The ingest loader applies
+# the same check pre-emptively; this is the last-line guard on the graph itself.
+_TORONTO_LAT_MIN, _TORONTO_LAT_MAX = 43.5, 43.9
+_TORONTO_LNG_MIN, _TORONTO_LNG_MAX = -79.7, -79.1
+
+
+def in_toronto_bbox(lat: float | None, lng: float | None) -> bool:
+    """True only if BOTH coordinates are present and inside the Toronto bbox."""
+    if lat is None or lng is None:
+        return False
+    return (
+        _TORONTO_LAT_MIN <= lat <= _TORONTO_LAT_MAX
+        and _TORONTO_LNG_MIN <= lng <= _TORONTO_LNG_MAX
+    )
+
+
 # Long street-type words -> canonical abbreviation. Each rule is keyed on a *long*
 # spelling, so a string already using the short form is left untouched — two formats
 # of the same address therefore collapse to one key. (LANE has no shorter canonical
@@ -99,7 +117,9 @@ class CivicGraph:
         node = f"address:{key}"
         if node not in self.g:
             self.g.add_node(node, kind="address", label=raw_address)
-        if lat is not None and lng is not None:
+        # Validate at the boundary: only attach coordinates that fall inside Toronto
+        # (a swapped lat/lng or out-of-region pair is ignored, i.e. treated as missing).
+        if in_toronto_bbox(lat, lng):
             self.g.nodes[node]["lat"] = lat
             self.g.nodes[node]["lng"] = lng
         return node

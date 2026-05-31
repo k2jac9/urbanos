@@ -34,6 +34,14 @@ _SAFETY_K = 0.45    # severity-weighted adverse VISITS → safety index
 _W_MINOR_VISIT = 0.3
 _W_SEVERE_VISIT = 1.0
 
+# Shared risk-band cutoffs (ADR 0014). A score in [0, _BAND_LOW) reads "low",
+# [_BAND_LOW, _BAND_HIGH) "medium", and >= _BAND_HIGH "high" (0 is "none"). These are
+# the SINGLE documented source for the bands: the map's pin colors in
+# src/civic_analyst/api/static/map.html (the `bandOf` helper and the circle-color
+# `step` stops) MUST mirror these exact cutoffs — update both together.
+_BAND_LOW = 0.34
+_BAND_HIGH = 0.67
+
 
 def activity_index(open_permits: int) -> float:
     """Construction-activity index from the count of open building permits."""
@@ -59,13 +67,25 @@ def classify_inspection(outcome) -> str:
     return "severe"  # Closed, Fail, Suspended, …
 
 
+def partition_inspections(inspections) -> dict[str, list[dict]]:
+    """Classify each inspection record ONCE and bucket it by severity.
+
+    Returns {"pass": [...], "minor": [...], "severe": [...]} so callers don't
+    re-run classify_inspection 3-4x over the same records. ``flagged`` (minor +
+    severe) is the non-pass set used by the safety index and recommendations."""
+    parts: dict[str, list[dict]] = {"pass": [], "minor": [], "severe": []}
+    for rec in inspections:
+        parts[classify_inspection(rec.get("outcome"))].append(rec)
+    return parts
+
+
 def risk_band(score: float) -> str:
     """Non-color risk label (mirrors the map's color thresholds)."""
     if score <= 0:
         return "none"
-    if score < 0.34:
+    if score < _BAND_LOW:
         return "low"
-    if score < 0.67:
+    if score < _BAND_HIGH:
         return "medium"
     return "high"
 
@@ -107,16 +127,8 @@ def compliance_counts(findings) -> tuple[int, int, int]:
         1 for r in recs
         if r.get("kind") == "permit" and str(r.get("status", "")).lower() != "closed"
     )
-    minor_visits = severe_visits = 0
-    for r in recs:
-        if r.get("kind") != "inspection":
-            continue
-        sev = classify_inspection(r.get("outcome"))
-        if sev == "minor":
-            minor_visits += 1
-        elif sev == "severe":
-            severe_visits += 1
-    return minor_visits, severe_visits, open_permits
+    parts = partition_inspections(r for r in recs if r.get("kind") == "inspection")
+    return len(parts["minor"]), len(parts["severe"]), open_permits
 
 
 def _ref(rec: dict) -> str:
@@ -315,9 +327,9 @@ def _recommendation(findings, id_to_tag: dict[str, str]) -> dict:
     recs = unique_records(findings).values()
     open_permits = [r for r in recs
                     if r.get("kind") == "permit" and str(r.get("status", "")).lower() != "closed"]
-    flagged = [r for r in recs
-               if r.get("kind") == "inspection" and classify_inspection(r.get("outcome")) != "pass"]
-    severe = [r for r in flagged if classify_inspection(r.get("outcome")) == "severe"]
+    parts = partition_inspections(r for r in recs if r.get("kind") == "inspection")
+    severe = parts["severe"]
+    flagged = parts["minor"] + severe
     if severe:
         return {"claim": "Recommended action: an adverse food-safety inspection is on record"
                 " — prioritize an on-site re-inspection.",
@@ -338,9 +350,9 @@ def deterministic_claims(address: str, findings, tagged: list[dict],
     recs = unique_records(findings)
     open_permits = [r for r in recs.values()
                     if r.get("kind") == "permit" and str(r.get("status", "")).lower() != "closed"]
-    inspections = [r for r in recs.values() if r.get("kind") == "inspection"]
-    minor = [r for r in inspections if classify_inspection(r.get("outcome")) == "minor"]
-    severe = [r for r in inspections if classify_inspection(r.get("outcome")) == "severe"]
+    parts = partition_inspections(r for r in recs.values() if r.get("kind") == "inspection")
+    minor = parts["minor"]
+    severe = parts["severe"]
     licences = [r for r in recs.values() if r.get("kind") == "licence"]
 
     claims = [{"claim": f"{len(recs)} linked record(s) for {address!r}.",

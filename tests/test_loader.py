@@ -159,6 +159,49 @@ def test_malformed_file_is_skipped_not_fatal(tmp_path: Path):
     assert summary == {"dinesafe": 1}
 
 
+def test_malformed_file_is_logged_loudly(tmp_path: Path, caplog):
+    # A corrupt slice must be VISIBLE in logs (not a silent "low risk everywhere").
+    (tmp_path / "licences__broken.json").write_text("{ this is not valid json ")
+    with caplog.at_level("WARNING", logger="civic_analyst.ingest.loader"):
+        load_into_graph(CivicGraph(), tmp_path)
+    assert any(
+        "skipping" in r.message and "licences__broken.json" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_out_of_toronto_coords_are_dropped(tmp_path: Path):
+    # A swapped lat/lng (43.65 / -79.38 flipped) lands in the ocean — it must be
+    # treated as missing at the ingest boundary, so the address carries no coords.
+    _write(
+        tmp_path,
+        "dinesafe__swapped.csv",
+        """
+        _id,Establishment Address,STATUS,Latitude,Longitude
+        1,500 Bloor St W,Pass,-79.38,43.65
+        """,
+    )
+    graph = CivicGraph()
+    summary = load_into_graph(graph, tmp_path)
+    assert summary == {"dinesafe": 1}              # the record still loads
+    assert graph.addresses(with_coords=True) == []  # but with no (bogus) pin
+
+
+def test_in_toronto_coords_are_kept(tmp_path: Path):
+    _write(
+        tmp_path,
+        "dinesafe__good.csv",
+        """
+        _id,Establishment Address,STATUS,Latitude,Longitude
+        1,500 Bloor St W,Pass,43.667,-79.41
+        """,
+    )
+    graph = CivicGraph()
+    load_into_graph(graph, tmp_path)
+    coords = graph.addresses(with_coords=True)
+    assert coords and coords[0]["lat"] == 43.667 and coords[0]["lng"] == -79.41
+
+
 def test_inspection_visits_dedup_by_address_and_date(tmp_path: Path):
     # DineSafe line-items one row per deficiency: 3 same-day rows at one address are
     # ONE visit; a different date is a second visit. The collapsed visit keeps the

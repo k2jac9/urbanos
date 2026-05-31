@@ -4,9 +4,13 @@ import json
 from civic_analyst.agents.subagents import Finding, RiskNarratorAgent
 from civic_analyst.agents.verify import (
     EVIDENCE_CAP,
+    _BAND_HIGH,
+    _BAND_LOW,
     deterministic_claims,
     evidence_index,
+    partition_inspections,
     resolve_claims,
+    risk_band,
     verify_claims,
 )
 
@@ -48,6 +52,33 @@ def test_evidence_index_tags_records():
 
 def test_clean_claims_pass():
     assert verify_claims(CLEAN, ADDRESS, FINDINGS, VALID) == []
+
+
+# --- band thresholds are named constants, mirrored by map.html ---------------- #
+def test_band_constants_are_the_documented_cutoffs():
+    # The map.html pin colors MUST mirror these exact values (single source).
+    assert (_BAND_LOW, _BAND_HIGH) == (0.34, 0.67)
+
+
+def test_risk_band_uses_constants_at_boundaries():
+    assert risk_band(0.0) == "none"
+    assert risk_band(_BAND_LOW - 0.001) == "low"
+    assert risk_band(_BAND_LOW) == "medium"          # inclusive lower edge of medium
+    assert risk_band(_BAND_HIGH - 0.001) == "medium"
+    assert risk_band(_BAND_HIGH) == "high"           # inclusive lower edge of high
+
+
+def test_partition_inspections_classifies_once_into_buckets():
+    recs = [
+        {"id": "a", "kind": "inspection", "outcome": "Pass"},
+        {"id": "b", "kind": "inspection", "outcome": "Conditional Pass"},
+        {"id": "c", "kind": "inspection", "outcome": "Fail"},
+        {"id": "d", "kind": "inspection", "outcome": "Closed"},
+    ]
+    parts = partition_inspections(recs)
+    assert [r["id"] for r in parts["pass"]] == ["a"]
+    assert [r["id"] for r in parts["minor"]] == ["b"]
+    assert [r["id"] for r in parts["severe"]] == ["c", "d"]
 
 
 def test_invented_source_id_is_caught():

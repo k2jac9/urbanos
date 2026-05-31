@@ -9,6 +9,7 @@ graph simply stays empty and the API still boots (offline-safe).
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -16,8 +17,10 @@ import pandas as pd
 
 from ..agents.verify import classify_inspection
 from ..config import settings
-from ..graph.builder import CivicGraph, normalize_address
+from ..graph.builder import CivicGraph, in_toronto_bbox, normalize_address
 from .datasets import REGISTRY
+
+_log = logging.getLogger(__name__)
 
 # Real enforcement outcomes (OutcomeDesc) that mark a visit SEVERE even when its
 # inspectionStatus is Pass/Conditional Pass — these are court/closure actions, not
@@ -196,8 +199,8 @@ def load_file(graph: CivicGraph, key: str, path: Path) -> int:
             date_val = str(row.get(plan["date_col"], "")).strip()
             if date_val:
                 attrs["date"] = date_val
-        graph.add_record(kind, record_id, address, lat=_coord(row, plan["lat_col"]),
-                         lng=_coord(row, plan["lng_col"]), **attrs)
+        lat, lng = _coords(row, plan["lat_col"], plan["lng_col"])
+        graph.add_record(kind, record_id, address, lat=lat, lng=lng, **attrs)
         added += 1
     return added
 
@@ -233,6 +236,7 @@ def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
         if plan["outcome_desc_col"] and _has_conviction(row.get(plan["outcome_desc_col"])):
             sev = "severe"
             outcome = "Conviction"
+        row_lat, row_lng = _coords(row, plan["lat_col"], plan["lng_col"])
         if gkey not in visits:
             order.append(gkey)
             record_id = (str(row.get(plan["id_col"])) if plan["id_col"] else f"{key}-{i}")
@@ -240,7 +244,7 @@ def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
                 "address": address, "record_id": record_id, "date": date_val,
                 "rank": _SEVERITY_RANK[sev], "outcome": outcome,
                 "deficiency_count": 1,
-                "lat": _coord(row, plan["lat_col"]), "lng": _coord(row, plan["lng_col"]),
+                "lat": row_lat, "lng": row_lng,
             }
             continue
         v = visits[gkey]
@@ -248,7 +252,7 @@ def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
         if _SEVERITY_RANK[sev] > v["rank"]:
             v["rank"], v["outcome"] = _SEVERITY_RANK[sev], outcome
         if v["lat"] is None:
-            v["lat"], v["lng"] = _coord(row, plan["lat_col"]), _coord(row, plan["lng_col"])
+            v["lat"], v["lng"] = row_lat, row_lng
     for gkey in order:
         v = visits[gkey]
         attrs: dict[str, Any] = {"dataset": key, "deficiency_count": v["deficiency_count"]}
@@ -260,8 +264,25 @@ def _load_inspection_visits(graph: CivicGraph, key: str, kind: str,
     return len(order)
 
 
+def _coords(row: dict[str, Any], lat_col: str | None,
+            lng_col: str | None) -> tuple[float | None, float | None]:
+    """Parse a row's lat/lng pair, swallowing missing/blank/malformed values and
+    dropping any pair that falls outside the Toronto bbox (a swapped lat/lng or a
+    coordinate from another city → treated as missing, not plotted in the ocean).
+    The bbox is defined once in graph.builder.in_toronto_bbox (single source)."""
+    lat = _coord(row, lat_col)
+    lng = _coord(row, lng_col)
+    if lat is None or lng is None:
+        return None, None
+    if not in_toronto_bbox(lat, lng):
+        _log.warning("dropping out-of-Toronto coordinate lat=%s lng=%s", lat, lng)
+        return None, None
+    return lat, lng
+
+
 def _coord(row: dict[str, Any], col: str | None) -> float | None:
-    """Parse a lat/lng cell, swallowing missing/blank/malformed values."""
+    """Parse a single lat/lng cell, swallowing missing/blank/malformed values.
+    Bbox validation is applied per-pair in `_coords`."""
     if not col:
         return None
     raw = row.get(col)
@@ -287,9 +308,13 @@ def load_into_graph(graph: CivicGraph, data_dir: Path | None = None) -> dict[str
         for path in sorted([*data_dir.glob(f"{key}__*.csv"), *data_dir.glob(f"{key}__*.json")]):
             try:
                 count += load_file(graph, key, path)
-            except Exception:
+            except (OSError, ValueError, json.JSONDecodeError,
+                    pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as exc:
                 # A single malformed/unreadable file must not abort the whole load
-                # (offline-safe boundary): skip it and keep ingesting the rest.
+                # (offline-safe boundary): skip it and keep ingesting the rest — but
+                # make a corrupt slice VISIBLE in logs so it isn't a silent "low risk
+                # everywhere" demo with no signal.
+                _log.warning("skipping %s: %s", path, exc)
                 continue
         if count:
             summary[key] = count

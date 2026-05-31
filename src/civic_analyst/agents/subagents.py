@@ -13,10 +13,10 @@ from ..graph.builder import CivicGraph
 from .llm import LocalLLM, interactive_llm
 from .verify import (
     activity_index,
-    classify_inspection,
     deterministic_claims,
     evidence_index,
     narrative_text,
+    partition_inspections,
     resolve_claims,
     safety_index,
     verify_claims,
@@ -64,9 +64,11 @@ class ComplianceAgent:
         open_permits = [p for p in permits if str(p.get("status", "")).lower() != "closed"]
         # `inspections` are already de-duped to one record per VISIT by the loader
         # (ADR 0013), so each non-pass visit counts once toward the safety index.
-        flagged = [i for i in inspections if classify_inspection(i.get("outcome")) != "pass"]
-        minor = [i for i in flagged if classify_inspection(i.get("outcome")) == "minor"]
-        severe = [i for i in flagged if classify_inspection(i.get("outcome")) == "severe"]
+        # Classify ONCE per visit (not 3x) and read the buckets.
+        parts = partition_inspections(inspections)
+        minor = parts["minor"]
+        severe = parts["severe"]
+        flagged = minor + severe
         # Prose honesty (#3a): "adverse" names SEVERE outcomes only (fail/closed/
         # conviction); a Conditional Pass is a minor follow-up, reported as such.
         # The safety index is SEVERITY-WEIGHTED (ADR 0014 §6): minors weigh 0.3, severe

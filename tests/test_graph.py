@@ -1,4 +1,8 @@
-from civic_analyst.graph.builder import CivicGraph, normalize_address
+from civic_analyst.graph.builder import (
+    CivicGraph,
+    in_toronto_bbox,
+    normalize_address,
+)
 
 
 def test_normalize_address_canonicalizes():
@@ -80,3 +84,24 @@ def test_records_attach_to_address():
     assert len(permits) == 1 and permits[0]["status"] == "open"
     assert len(inspections) == 1 and inspections[0]["outcome"] == "Fail"
     assert g.records_for("999 Nowhere Rd") == []
+
+
+def test_in_toronto_bbox_accepts_downtown_rejects_outliers():
+    # A real downtown point is inside; a swapped lat/lng and a missing half are out.
+    assert in_toronto_bbox(43.65, -79.38)          # 100 Queen St W area
+    assert not in_toronto_bbox(-79.38, 43.65)      # lat/lng swapped
+    assert not in_toronto_bbox(43.65, None)        # half missing
+    assert not in_toronto_bbox(0.0, 0.0)           # null island
+
+
+def test_add_address_drops_out_of_bbox_coords():
+    g = CivicGraph()
+    # In-Toronto coords attach to the node.
+    g.add_record("permit", "P1", "100 Queen St W", lat=43.65, lng=-79.38, status="open")
+    assert g.addresses(with_coords=True)[0]["lat"] == 43.65
+    # A swapped lat/lng (would land in the ocean) is ignored: address still exists,
+    # but carries NO coordinates — treated as missing, not plotted.
+    g2 = CivicGraph()
+    g2.add_record("permit", "P2", "200 King St E", lat=-79.38, lng=43.65, status="open")
+    assert g2.has_address("200 King St E")
+    assert g2.addresses(with_coords=True) == []

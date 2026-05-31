@@ -59,10 +59,34 @@ def _prewarm_model() -> None:
         pass
 
 
+def load_graph() -> dict:
+    """PUBLIC entrypoint: (re)load the civic knowledge graph into this app's
+    module-global ``_graph`` and return the load summary.
+
+    Idempotent — clears then reloads, so it never accumulates prior loads. Exposed
+    so a *parent* app that mounts this one (whose mounted-sub-app ``lifespan`` does
+    not reliably fire under Starlette) can trigger the load without reaching into
+    this module's private globals (ADR-0023). Offline-safe: with no data present the
+    graph stays empty and this returns an empty-ish summary."""
+    _graph.clear()
+    summary = load_into_graph(_graph, settings.data_dir)
+    app.state.load_summary = summary
+    return summary
+
+
+def ensure_loaded() -> dict:
+    """Load the graph only if it is currently empty (no-op once populated).
+
+    Lets a parent app guarantee the graph is ready without wiping one this app's own
+    ``lifespan`` may have already built. Returns the (existing or fresh) summary."""
+    if len(_graph) == 0:
+        return load_graph()
+    return getattr(app.state, "load_summary", {})
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _graph.clear()  # reload cleanly on (re)startup; don't accumulate prior loads
-    app.state.load_summary = load_into_graph(_graph, settings.data_dir)
+    load_graph()  # reload cleanly on (re)startup; don't accumulate prior loads
     if settings.llm_prewarm:
         threading.Thread(target=_prewarm_model, daemon=True).start()
     yield

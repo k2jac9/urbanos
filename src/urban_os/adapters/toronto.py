@@ -209,10 +209,19 @@ def _synthetic_safety_by_node(substrate) -> dict[str, float]:
 _CIVIC_ADDRS_CACHE: list | None = None
 
 
-def _civic_addresses() -> list:
-    """Civic addresses (coords + safety risk), loaded ONCE. civic_analyst's
-    ``load()`` accumulates into a module-global graph, so calling it per request
-    drifts the aggregated risk — cache the result so the overlay is stable."""
+def reset_civic_address_cache() -> None:
+    """Clear the cached civic-address overlay. Lets tests/long-running servers reset
+    the process-global cache deterministically (ADR-0023)."""
+    global _CIVIC_ADDRS_CACHE
+    _CIVIC_ADDRS_CACHE = None
+
+
+def _default_civic_addresses() -> list:
+    """Default address provider: civic addresses (coords + safety risk), loaded ONCE.
+    civic_analyst's ``load()`` accumulates into a module-global graph, so calling it
+    per request drifts the aggregated risk — cache the result so the overlay is
+    stable. This is the only place the adapter touches civic internals; callers that
+    want isolation can inject their own provider into ``civic_safety_by_node``."""
     global _CIVIC_ADDRS_CACHE
     if _CIVIC_ADDRS_CACHE is None:
         from civic_analyst import mcp_server as civ
@@ -222,18 +231,24 @@ def _civic_addresses() -> list:
     return _CIVIC_ADDRS_CACHE
 
 
-def civic_safety_by_node(substrate, *, radius_deg: float = 0.0045) -> dict[str, float]:
+def civic_safety_by_node(
+    substrate, *, radius_deg: float = 0.0045, address_provider=None
+) -> dict[str, float]:
     """Map each substrate node → the civic-safety risk of its surrounding addresses
     (the civic_analyst graph), proximity-weighted. This is the **real fusion** that
     makes ``SafetyLens`` literal: address-level compliance-safety risk → a node
     field on the kernel substrate.
 
-    Falls back to a deterministic synthetic overlay if the civic graph isn't
-    importable/loaded (so Urban-OS stays standalone and tests run offline)."""
+    ``address_provider`` is an injectable ``() -> list[dict]`` (ADR-0023): the default
+    pulls from civic_analyst, but tests/other adapters can pass their own, so this
+    adapter no longer *hard*-depends on civic internals. Falls back to a deterministic
+    synthetic overlay if the provider yields nothing or raises (so Urban-OS stays
+    standalone and tests run offline)."""
     import numpy as np
 
+    provider = address_provider or _default_civic_addresses
     try:
-        addrs = _civic_addresses()  # cached: civ.load() runs once (it accumulates)
+        addrs = provider()
         if not addrs:
             raise RuntimeError("no civic addresses loaded")
         out: dict[str, float] = {}

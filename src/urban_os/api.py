@@ -20,6 +20,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import logging
 import math
 from contextlib import asynccontextmanager
 from functools import lru_cache
@@ -62,25 +63,20 @@ _OFFLINE_ASSETS = (
 
 
 def _load_civic_graph() -> None:
-    """Run civic_analyst's data-graph load under THIS (parent) app.
+    """Ensure the mounted civic sub-app's knowledge graph is loaded under THIS app.
 
     GOTCHA: a mounted sub-app's ``lifespan`` does NOT reliably run when the parent
     app starts up under this Starlette version, so ``/civic/addresses`` would serve
-    an empty graph (civic only loads its module-global ``_graph`` from inside its
-    own lifespan). We reproduce civic's lifespan load here: clear the graph and
-    re-run ``load_into_graph`` into the SAME module-global ``_graph`` the mounted
-    sub-app's routes read. Best-effort and offline-safe — if no data is present the
-    graph stays empty and the server still boots (civic's own contract)."""
+    an empty graph. We call civic's PUBLIC ``load_graph`` entrypoint (ADR-0023) rather
+    than reaching into its private module globals, so a civic-side refactor can no
+    longer silently break ``/civic/*`` here. Offline-safe: a load failure is LOGGED
+    (not silently swallowed) and never blocks Urban-OS startup."""
     try:
-        _civic_server._graph.clear()  # reload cleanly; never accumulate prior loads
-        summary = _civic_server.load_into_graph(
-            _civic_server._graph, _civic_server.settings.data_dir
+        _civic_server.load_graph()
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "civic graph load failed; /civic/* will serve an empty graph: %s", exc
         )
-        # Mirror civic's lifespan side effect so /civic/health reports its load.
-        civic_app.state.load_summary = summary
-    except Exception:
-        # Loading civic data must never block Urban-OS startup (offline invariant).
-        pass
 
 
 @asynccontextmanager

@@ -77,6 +77,15 @@
     .bar.transit > span { background: var(--risk-high); }
     .bar.safety > span { background: var(--accent); }
     .bar.business > span { background: var(--risk-none); }
+    .bar.ems > span { background: #ff5c7a; }
+    .bar.emissions > span { background: #8a8f98; }
+    .bar.noise > span { background: #c084fc; }
+    .bar.fare > span { background: #34d399; }
+    .maplayers { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .maplayers .mll { font-size: 11px; opacity: .7; text-transform: uppercase; letter-spacing: .04em; }
+    .mlb { font: inherit; font-size: 12px; padding: 3px 9px; border-radius: var(--pill);
+      border: 1px solid var(--surface-sel); background: var(--surface-2); color: inherit; cursor: pointer; }
+    .mlb.on { background: var(--accent); color: #00111e; border-color: var(--accent); font-weight: 700; }
     .combined { margin-top: 12px; padding: 14px; border-radius: var(--r-lg);
       background: linear-gradient(135deg, var(--surface-sel), var(--surface-2));
       border: 1px solid var(--accent); text-align: center; }
@@ -349,6 +358,23 @@
   let FRAME = 0, playing = false, timer = null;
   let RELEASE = 0, SHELTER = 0;
   let LENS = null;
+  let CUR_LAYER = 'crush';     // map-heat source: crush | ems_access | residential | emissions
+  let OVERLAYS_BYID = null;    // /overlays per-node static intelligence fields (lazy-loaded)
+  // Switch the City heatmap between the live crush ripple and a static intelligence
+  // overlay. Reuses the existing os-heatmap (just changes node weight) so it composes
+  // with lens show/hide and adds no new map layers.
+  async function setOverlay(key) {
+    CUR_LAYER = key;
+    const box = document.getElementById('maplayers');
+    if (box) box.querySelectorAll('.mlb').forEach(b => b.classList.toggle('on', b.dataset.layer === key));
+    if (key !== 'crush' && !OVERLAYS_BYID) {
+      try {
+        const d = await (await fetch('/overlays')).json();
+        OVERLAYS_BYID = {}; (d.nodes || []).forEach(o => OVERLAYS_BYID[o.id] = o);
+      } catch (e) { OVERLAYS_BYID = {}; }
+    }
+    refreshOS();
+  }
   let BASELINE = null;    // /lenses at (0,0) — the do-nothing reference for the ripple
   let BENEFIT_DEFS = {};  // ADR-0019 benefit_definitions map (labels the $ headlines, F-4)
   const benefitTip = (k) => esc(BENEFIT_DEFS[k] || '');
@@ -407,7 +433,16 @@
       const s = STEADY ? (steadyById[nd.id] || { congestion:0, load:0 }) : live;
       const base = nd.is_sink ? 7 : Math.max(7, Math.min(26, 6 + Math.log10(nd.capacity + 10) * 4));
       const r = nd.group === 'venue' ? base + 3 : base;
-      const w = nd.is_sink ? 0 : Math.max(0, Math.min(1.5, s.congestion || 0));
+      // Map-heat layer toggle: 'crush' uses the live congestion ripple; the
+      // intelligence overlays (EMS access / Activity / Emissions) drive the SAME
+      // heatmap with their static per-node weight from /overlays.
+      let w;
+      if (CUR_LAYER !== 'crush' && OVERLAYS_BYID) {
+        const ov = OVERLAYS_BYID[nd.id];
+        w = ov ? Math.max(0, Math.min(1.5, +ov[CUR_LAYER] || 0)) : 0;
+      } else {
+        w = nd.is_sink ? 0 : Math.max(0, Math.min(1.5, s.congestion || 0));
+      }
       return { type:'Feature', geometry:{ type:'Point', coordinates:[nd.lng, nd.lat] },
         properties:{ id:nd.id, label:nd.label, maplabel:shortLabel(nd.label), is_sink:nd.is_sink, group:nd.group, radius:r,
           congestion:s.congestion, load:s.load, weight:w, color: nd.is_sink ? '#1e293b' : colorFor(s.congestion) } };
@@ -630,7 +665,17 @@
             '<p class="optband">↪ These settings apply across all lenses (City · Flow · Economy).</p>'+
           '</div>'+
           '<div class="meters" id="meters">'+meterHTML('transit','Transit crush (Union ×)','—')+
-            meterHTML('safety','Public-safety exposure','—')+meterHTML('business','Local business lost','—')+'</div>'+
+            meterHTML('safety','Public-safety exposure','—')+meterHTML('business','Local business lost','—')+
+            // Supplementary intelligence lenses (additive, display-only) — they ride the
+            // same lever ripple but never touch the calibrated combined headline.
+            meterHTML('ems','EMS access blocked','—')+meterHTML('emissions','Idling emissions','—')+
+            meterHTML('noise','Residential noise','—')+meterHTML('fare','Fares at risk','—')+'</div>'+
+          // Map-heat layer toggle: paint the heatmap by the live crush or by an
+          // intelligence overlay (EMS access · Activity · Emissions) from /overlays.
+          '<div class="maplayers" id="maplayers"><span class="mll">Map heat</span>'+
+            [['crush','Crush'],['ems_access','EMS'],['residential','Activity'],['emissions','Emissions']]
+              .map(([k,t])=>'<button class="mlb'+(k==='crush'?' on':'')+'" data-layer="'+k+'" type="button">'+t+'</button>').join('')+
+          '</div>'+
           // F-4: the headline used to show three unexplained dollar figures. Now the
           // big number is cross_domain_benefit, LABELLED "cross-domain (additive)" with
           // its ADR-0019 definition on hover; the conservative single-objective J avoided
@@ -652,6 +697,8 @@
           '<p class="hint">Drag the lever: the city calms and all three lenses move together. “Find the best” runs the optimizer and lights the room.</p>'
         );
         bindLevers((r, s) => rippleTo(r, s));   // live on drag (rippleTo debounces)
+        const ml = document.getElementById('maplayers');
+        if (ml) ml.addEventListener('click', e => { const b = e.target.closest('.mlb'); if (b) setOverlay(b.dataset.layer); });
         document.getElementById('opt').addEventListener('click', runOptimize);
         rippleTo(RELEASE, SHELTER, true);
         loadFlow();   // ADR-0026 Phase 2: cuOpt optimal-evacuation ceiling
@@ -831,6 +878,19 @@
       setMeter('transit', l.transit.peak_congestion, BASELINE.transit.peak_congestion);
       setMeter('safety', l.safety.cost, BASELINE.safety.cost);
       setMeter('business', l.business.lost, BASELINE.business.lost);
+      // Supplementary lenses ripple too (guarded — older API builds omit extra_lenses).
+      const ex = l.extra_lenses, exb = BASELINE && BASELINE.extra_lenses;
+      if (ex) {
+        const setX = (kind, name, fmt) => {
+          const el = document.getElementById('m-'+kind);
+          if (el && ex[name]) el.textContent = fmt(ex[name]);
+          if (exb && exb[name] && ex[name]) setMeter(kind, ex[name].optimized_cost, exb[name].optimized_cost);
+        };
+        setX('ems', 'ems_access', e => dK(e.optimized_cost));
+        setX('emissions', 'emissions', e => Math.round(e.metric.optimized).toLocaleString() + ' kg');
+        setX('noise', 'noise_livability', e => dK(e.optimized_cost));
+        setX('fare', 'fare_revenue', e => dK(e.optimized_cost));
+      }
     }, immediate ? 0 : 220);
   }
 

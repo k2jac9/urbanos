@@ -37,6 +37,51 @@ BENEFIT_DEFINITIONS: dict[str, str] = {
 }
 
 
+# Headline human metric per supplementary lens: (observed series key, how to
+# aggregate it over the run). Dollars come from each lens's own cost(); this is the
+# one extra natural-units number the UI shows next to the dollars.
+_EXTRA_LENS_METRIC = {
+    "ems_access": ("ems_exposure", "sum", "blocked-EMS exposure (person-min·crit)"),
+    "emissions": ("emissions_kg", "sum", "idling CO₂e (kg)"),
+    "noise_livability": ("noise_exposure", "sum", "residential crush (person-min·res)"),
+    "fare_revenue": ("fare_in_system", "peak", "peak riders backed up"),
+}
+
+
+def _agg(series, how):
+    if not series:
+        return 0.0
+    return float(max(series)) if how == "peak" else float(sum(series))
+
+
+def extra_lens_report(lenses, baseline_result, current_result) -> dict:
+    """Baseline/optimized/saved figures for the supplementary display lenses.
+
+    Reads each lens's ``cost`` off the SAME two sims the /lenses endpoint already
+    runs (the lenses ride along in the stack but are excluded from ``J``), so this
+    adds no extra simulations and cannot move the headline numbers. Each entry also
+    carries one human metric in natural units (kg, person-minutes, riders)."""
+    out: dict[str, dict] = {}
+    for ln in lenses:
+        b = float(ln.cost(baseline_result))
+        c = float(ln.cost(current_result))
+        key, how, label = _EXTRA_LENS_METRIC.get(ln.name, (None, "sum", ln.name))
+        entry = {
+            "label": label,
+            "baseline_cost": _r(b, 2),
+            "optimized_cost": _r(c, 2),
+            "saved": _r(b - c, 2),
+        }
+        if key is not None:
+            mb = _agg(baseline_result.series(key), how)
+            mc = _agg(current_result.series(key), how)
+            entry["metric"] = {
+                "baseline": _r(mb, 2), "optimized": _r(mc, 2), "saved": _r(mb - mc, 2),
+            }
+        out[ln.name] = entry
+    return out
+
+
 def four_lens_stack(sc):
     """The full four-lens stack (transit + economic + civic safety + business)."""
     return default_lens_stack(sc, safety=True, business=True)

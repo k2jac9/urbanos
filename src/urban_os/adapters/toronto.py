@@ -231,37 +231,67 @@ def _default_civic_addresses() -> list:
     return _CIVIC_ADDRS_CACHE
 
 
-def civic_safety_by_node(
-    substrate, *, radius_deg: float = 0.0045, address_provider=None
+def _civic_field_by_node(
+    substrate, *, field: str, radius_deg: float = 0.0045, address_provider=None
 ) -> dict[str, float]:
-    """Map each substrate node → the civic-safety risk of its surrounding addresses
-    (the civic_analyst graph), proximity-weighted. This is the **real fusion** that
-    makes ``SafetyLens`` literal: address-level compliance-safety risk → a node
-    field on the kernel substrate.
+    """Map each substrate node → the proximity-weighted ``field`` of its surrounding
+    civic addresses (the civic_analyst graph). The shared core behind the safety and
+    activity overlays — the **real fusion** of address-level civic data onto kernel
+    nodes.
 
-    ``address_provider`` is an injectable ``() -> list[dict]`` (ADR-0023): the default
-    pulls from civic_analyst, but tests/other adapters can pass their own, so this
-    adapter no longer *hard*-depends on civic internals. Falls back to a deterministic
-    synthetic overlay if the provider yields nothing or raises (so Urban-OS stays
-    standalone and tests run offline)."""
+    ``field`` selects which per-address index to lift (``risk_safety`` or
+    ``risk_activity``; both ship on every ``top_risk`` row, ADR-0014).
+    ``address_provider`` is an injectable ``() -> list[dict]`` (ADR-0023). Raises on
+    empty/failed providers so callers can fall back to a deterministic synthetic
+    overlay (keeping Urban-OS standalone and tests offline)."""
     import numpy as np
 
     provider = address_provider or _default_civic_addresses
+    addrs = provider()
+    if not addrs:
+        raise RuntimeError("no civic addresses loaded")
+    out: dict[str, float] = {}
+    for i, nid in enumerate(substrate.ids):
+        la, lo = float(substrate.lat[i]), float(substrate.lng[i])
+        num = den = 0.0
+        for a in addrs:
+            dlat = a["lat"] - la
+            dlng = (a["lng"] - lo) * np.cos(np.radians(la))
+            w = float(np.exp(-(dlat * dlat + dlng * dlng) / (radius_deg * radius_deg)))
+            num += w * float(a.get(field, 0.0))
+            den += w
+        out[nid] = (num / den) if den > 0 else 0.0
+    return out
+
+
+def civic_safety_by_node(
+    substrate, *, radius_deg: float = 0.0045, address_provider=None
+) -> dict[str, float]:
+    """Per-node civic-SAFETY overlay — the **real fusion** that makes ``SafetyLens``
+    literal: address-level compliance-safety risk → a node field. Falls back to a
+    deterministic synthetic overlay if the civic provider yields nothing or raises."""
     try:
-        addrs = provider()
-        if not addrs:
-            raise RuntimeError("no civic addresses loaded")
-        out: dict[str, float] = {}
-        for i, nid in enumerate(substrate.ids):
-            la, lo = float(substrate.lat[i]), float(substrate.lng[i])
-            num = den = 0.0
-            for a in addrs:
-                dlat = a["lat"] - la
-                dlng = (a["lng"] - lo) * np.cos(np.radians(la))
-                w = float(np.exp(-(dlat * dlat + dlng * dlng) / (radius_deg * radius_deg)))
-                num += w * float(a.get("risk_safety", 0.0))
-                den += w
-            out[nid] = (num / den) if den > 0 else 0.0
-        return out
+        return _civic_field_by_node(
+            substrate, field="risk_safety", radius_deg=radius_deg,
+            address_provider=address_provider,
+        )
+    except Exception:
+        return _synthetic_safety_by_node(substrate)
+
+
+def civic_activity_by_node(
+    substrate, *, radius_deg: float = 0.0045, address_provider=None
+) -> dict[str, float]:
+    """Per-node civic-ACTIVITY overlay — the real development/livability signal that
+    grounds ``NoiseLivabilityLens``: the Activity index (building permits + business
+    licences fused, ADR-0014) lifted onto the substrate by proximity. Where activity
+    clusters is where a late-night egress crush disturbs the most livability-sensitive
+    blocks. Falls back to the deterministic synthetic overlay when civic data is
+    absent (so the lens still runs offline)."""
+    try:
+        return _civic_field_by_node(
+            substrate, field="risk_activity", radius_deg=radius_deg,
+            address_provider=address_provider,
+        )
     except Exception:
         return _synthetic_safety_by_node(substrate)

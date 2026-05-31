@@ -12,8 +12,18 @@ that Economic populates (ADR-0007).
 """
 from __future__ import annotations
 
-from .adapters import civic_safety_by_node
-from .lenses import BusinessFlow, EconomicLens, EventSurge, SafetyLens, WeatherLens
+from .adapters import civic_activity_by_node, civic_safety_by_node
+from .lenses import (
+    BusinessFlow,
+    EconomicLens,
+    EmissionsLens,
+    EmsAccessLens,
+    EventSurge,
+    FareRevenueLens,
+    NoiseLivabilityLens,
+    SafetyLens,
+    WeatherLens,
+)
 
 # WeatherLens calibration for the default downtown demo (a passing rain cell that
 # peaks with the egress wave). Kept here so both surfaces get identical weather.
@@ -54,3 +64,28 @@ def default_lens_stack(
         # transit + safety + economics together.
         stack.append(BusinessFlow(sc.venue_id))
     return stack
+
+
+def extra_display_lenses(sc=None) -> list:
+    """The four supplementary intelligence lenses — EMS-access, emissions,
+    noise/livability, fare-revenue.
+
+    These are **additive and display-only**: each reads only the crowd fields and
+    contributes its own per-node field + priced term, surfaced in ``/lenses`` with
+    a baseline/optimized/saved figure (and proven non-perturbing by the additivity
+    contract test). They are deliberately NOT summed into the optimizer's objective
+    ``J``, so promoting a lens to a *decision* objective (which would move the
+    headline numbers) stays an explicit, separate choice — the demo's calibrated
+    transit+safety+business figures are unchanged.
+
+    When a scenario ``sc`` is given, ``NoiseLivabilityLens`` is grounded in the REAL
+    civic Activity overlay (building permits + business licences fused onto nodes,
+    ADR-0014) — the same address→node fusion ``SafetyLens`` uses. Without ``sc`` (or
+    if civic data is absent) it falls back to its deterministic synthetic weight.
+    """
+    noise = (
+        NoiseLivabilityLens(civic_activity_by_node(sc.substrate))
+        if sc is not None
+        else NoiseLivabilityLens()
+    )
+    return [EmsAccessLens(), EmissionsLens(), noise, FareRevenueLens()]

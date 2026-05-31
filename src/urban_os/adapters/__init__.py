@@ -7,6 +7,16 @@ portal (``CKAN_URL`` swap) yields a new substrate with no lens changes.
 """
 from __future__ import annotations
 
-from .toronto import Scenario, civic_safety_by_node, downtown_scenario
+from .toronto import (
+    Scenario,
+    civic_activity_by_node,
+    civic_safety_by_node,
+    downtown_scenario,
+)
 
-__all__ = ["Scenario", "downtown_scenario", "civic_safety_by_node"]
+__all__ = [
+    "Scenario",
+    "downtown_scenario",
+    "civic_safety_by_node",
+    "civic_activity_by_node",
+]

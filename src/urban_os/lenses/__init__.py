@@ -21,8 +21,24 @@ from __future__ import annotations
 
 from .business_flow import BusinessFlow
 from .economic import EconomicLens
+from .emissions import EmissionsLens
+from .ems_access import EmsAccessLens
 from .event_surge import EventSurge
+from .fare_revenue import FareRevenueLens
+from .noise_livability import NoiseLivabilityLens
 from .safety import SafetyLens
 from .weather import WeatherLens
 
-__all__ = ["EventSurge", "EconomicLens", "WeatherLens", "BusinessFlow", "SafetyLens"]
+__all__ = [
+    "EventSurge",
+    "EconomicLens",
+    "WeatherLens",
+    "BusinessFlow",
+    "SafetyLens",
+    # Supplementary intelligence lenses (additive, display-only — see
+    # scenarios.extra_display_lenses): not summed into the optimizer's objective.
+    "EmsAccessLens",
+    "EmissionsLens",
+    "NoiseLivabilityLens",
+    "FareRevenueLens",
+]

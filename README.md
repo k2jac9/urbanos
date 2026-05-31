@@ -31,8 +31,8 @@ proving the adapter×lens architecture.
 
 ### The killer insight (live, from the model)
 > *"Union Station reaches **2.5× safe capacity 14 minutes after full-time**; a
-> **12-minute staggered release** cuts the peak by **53%** and saves **~$23k** in
-> commuter delay."*
+> **14-minute staggered release** cuts the peak by **62%** — a net intervention
+> benefit of **~$60k** (cost J $94k → $34k)."*
 
 Specific station, timing, lever, dollars — emergent from the dynamics, and **grounded**:
 the figures are computed deterministically and the local model only phrases them, behind

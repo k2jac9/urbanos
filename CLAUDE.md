@@ -58,13 +58,39 @@ Layout: `src/civic_analyst/{ingest,graph,agents,api}`, `tests/`, `scripts/`, `de
 - **STRETCH (only if core is solid):** QLoRA fine-tune, multi-dataset fusion, NemoClaw on the box.
 - Don't overscope. **One flawless demo > five half-features.**
 
-## Current status (handoff — 2026-05-28)
-The **core demo is done and verified on real data**; a fresh clone builds + passes all tests.
-- First-clone setup: `python -m venv .venv && . .venv/bin/activate` → `make install` → `make install-hooks` → `cp .env.example .env`. Then `make demo` (offline map at :8000) or `make test`.
-- **Done:** offline MapLibre+PMTiles map; 3 real Toronto datasets fused (DineSafe + licences + permits, ~12 addresses link all three); deterministic risk scoring; local-LLM narrator with a **hallucination guard** (verifier + deterministic fallback) and **per-claim click-to-verify** (browser-confirmed); CI + pre-push test gate.
-- **Left (GX10-day, can't be done off the box):** run real Nemotron (`LLM_MODEL=nemotron-3-nano` against local Ollama); optional NemoClaw wiring (`config/nemoclaw.mcp.json`); optional QLoRA fine-tune (`scripts/finetune_address_resolution.py`). **Step-by-step: `docs/ON_THE_BOX.md`.**
-- **Demo tip:** use **500 Bloor St W** as the hero pin — it shows the 3-dataset fusion best (permits + failed inspections + licence). Avoid 40 Bay St (permit-only saturates the evidence view).
-- Real-data slices are committed; regenerate with `make demo-data` (needs the `pmtiles` CLI for the basemap via `scripts/build_tiles.sh`).
+## Current status (handoff — 2026-05-31, demo day)
+**Full read for the next session:** `docs/HANDOFF.md` (@cyberqubit → @k2jac9), `docs/PITCH.md`
+(the pitch), `docs/ON_THE_BOX.md` (box runbook). A fresh clone builds + passes all tests
+(`make test` ≈ 311 green). Everything below is **merged on `main` + CI-green**.
+
+**The project is two apps that share one architecture:**
+- **`civic_analyst` (`:8000`)** — the address risk app: 3 fused Toronto datasets (DineSafe +
+  permits + licences), deterministic risk (now **two-index: Safety + Activity**, ADR-0014),
+  local-Nemotron narrator + **hallucination guard** + **click-to-verify**. Plus **Presentation
+  Mode** (cyber theme + 3D real-building focus + floating info board) and a CSS design-token system.
+- **`urban_os` (`:8001`)** — the flagship: a simulation **kernel** (substrate + time loop + the four
+  operators) with **four lenses** — EventSurge · Economic · **Safety (the civic risk app, made a
+  *literal* kernel lens)** · **BusinessFlow** — and an optimizer. One staggered-release lever
+  (`make urbanos-cli`: 14-min / **−62% peak** / ~$60k transit) is scored across all lenses:
+  **~$116k** combined (transit + public safety + local business). The UI has a **cross-domain panel
+  + lens toggles** (☑ Public safety ☑ Local business — the user picks which lenses count).
+
+**NemoClaw / MCP bounty — DONE & verified on the box** (no longer "optional/left"): a local
+Nemotron agent calls our `toronto-civic` MCP tools and answers **grounded** (matched the tool
+exactly). Steps + the demo command in `docs/ON_THE_BOX.md §3`. NB: the box's `~/.openclaw/openclaw.json`
+got **additive** changes (MCP server + an ollama/nemotron provider; backed up; defaults untouched).
+
+**Left — box-side only (see `docs/HANDOFF.md`, issue #61):** **pull `main` on the box + restart
+`:8000` (`systemctl --user restart civic-demo`) and the `:8001` process** so the live demo matches
+the repo (the box still serves the *old* Urban-OS numbers). The civic-demo `:8000` is a supervised
+user service (linger + Restart=always); the public judge URL is the Tailscale Funnel
+`https://gx10-4428.taila9fe06.ts.net`. Optional stretch: QLoRA fine-tune.
+
+**Demo tips:** civic hero pin **500 Bloor St W** (3-dataset fusion); flip **◢ Presentation** for the
+3D building; on `:8001` use **lens toggles** to show "one lever, every lens." Real-data slices are
+committed; regenerate with `make demo-data` (needs the `pmtiles` CLI via `scripts/build_tiles.sh`).
+First-clone setup: `python -m venv .venv && . .venv/bin/activate` → `make install` →
+`make install-hooks` → `cp .env.example .env`.
 
 ---
 

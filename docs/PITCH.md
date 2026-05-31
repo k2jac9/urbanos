@@ -42,9 +42,9 @@ no hallucinated numbers**.
 > peak **75%**, back to **1.0×**.
 >
 > And the same lever, scored across **every** lens at once: it eliminates
-> **$53,700** of public-safety exposure — the civic-risk data deciding we shouldn't
+> **$50,900** of public-safety exposure — the civic-risk data deciding we shouldn't
 > crush a crowd through the least-safe districts — and recovers **$10,700** of
-> local business a crush would have killed. **One lever. ~$458,000 of combined
+> local business a crush would have killed. **One lever. ~$455,000 of combined
 > benefit.** Transit, public safety, and the local economy — optimized together.
 > The Fan Festival is running a **$6.2M deficit**; this is the operations side of
 > closing it."
@@ -90,7 +90,7 @@ no hallucinated numbers**.
   (2-lens, **~$218k**); `--safety --business` adds the cross-domain lenses
   (**~$281k**); the live `:8001` UI's `/optimize` adds the **WeatherLens/shelter
   lever** ([ADR-0007](0007-third-lens-weather.md)/[0016](0016-shelter-interior-optimum-coverage-premium.md))
-  so its lever is *release + shelter* and its combined benefit is **~$458k**. Cite
+  so its lever is *release + shelter* and its combined benefit is **~$455k**. Cite
   the surface you're showing.
 - **"Is the FIFA crowd made up?"** Crowd sizes are anchored to announced capacities
   (BMO Field FIFA 45,736; Rogers Centre; Scotiabank Arena; Fort York fan zone);
@@ -129,9 +129,9 @@ the pitch never drifts from the live demo):
 | Union peak | **4.0× → 1.0×** (**−75%**), 24 min after full-time (t=52) |
 | Lever | **16-min release + 80% shelter coverage** |
 | Net intervention benefit (J) | **~$394k** (J $533k → $140k) |
-| Public safety | **$53.7k → $0** |
+| Public safety | **$50.9k → $0** |
 | Local business | **$10.7k** recovered |
-| **Combined cross-domain benefit** | **~$458k** |
+| **Combined cross-domain benefit** | **~$455k** |
 
 The deficit tie-in: one coordinated lever, optimized across *every* concurrent
 event, is the **operations** side of offsetting the Fan Festival's **$6.2M deficit**.

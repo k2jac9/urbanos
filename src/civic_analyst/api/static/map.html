@@ -568,7 +568,6 @@
     function focusBuilding(label, d) {
       const row = ADDR_ROWS.find((a) => a.label === label);
       if (!row || !mapReady) return;
-      const want = (label.match(/^\s*(\d+)/) || [])[1];   // leading house number
       const seq = ++focusSeq;
       // Tear down the previous selection's highlight at selection time, so the stale
       // magenta footprint doesn't stay lit on the OLD building through the 1200ms flyTo.
@@ -577,39 +576,21 @@
       map.flyTo({ center: [row.lng, row.lat], zoom: 17.3, pitch: 64, bearing: -22, duration: 1200 });
       map.once('idle', () => {
         if (seq !== focusSeq || !PRES) return;   // superseded by a newer click, or left 3D
-        const pt = map.project([row.lng, row.lat]), pad = 90;
-        let feats = map.queryRenderedFeatures(
-          [[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]], { layers: ['bldreal'] });
-        if (!feats.length) feats = map.queryRenderedFeatures(
-          [[pt.x - pad, pt.y - pad], [pt.x + pad, pt.y + pad]], { layers: ['buildings'] });
-        // Prefer the footprint whose house number matches; else the nearest centroid.
-        let target = want && feats.find((f) => String(f.properties.addr_housenumber) === want);
-        if (!target) {
-          // Cap the nearest-centroid fallback (~30m in degrees²) so we don't light up a
-          // neighbouring building when this address has no footprint in view.
-          const MAX_DD = 2.7e-7;
-          let best = MAX_DD;
-          feats.forEach((f) => {
-            if (f.geometry.type !== 'Polygon') return;
-            const c = bldCentroid(f.geometry); if (!c) return;
-            const dd = (c[0] - row.lng) ** 2 + (c[1] - row.lat) ** 2;
-            if (dd < best) { best = dd; target = f; }
-          });
-        }
         if (map.getLayer('focusbld')) map.removeLayer('focusbld');
         if (map.getSource('focusbld')) map.removeSource('focusbld');
-        // No real footprint nearby (the offline basemap is sparse) → anchor a synthetic
-        // disc at the pin so the highlight is consistent across every address, not just
-        // the handful that happen to sit on a tagged footprint.
-        if (!target) target = { properties: { height: 20 }, geometry: discPolygon(row.lng, row.lat, 13) };
+        // UNIFORM marker. The offline basemap's building footprints are too sparse and
+        // uneven to highlight consistently — a couple of addresses (e.g. 65 Front St W)
+        // sit on a big tagged tower while most sit on nothing. Lighting real buildings
+        // for some and discs for others looked inconsistent, so anchor the SAME synthetic
+        // footprint at every selected pin: same shape, same size, band-coloured.
         const col = { high: '#ff3b6b', medium: '#ffb020', low: '#ffe34d', none: '#2bff88' }[worstBand(row)];
         map.addSource('focusbld', { type: 'geojson',
-          data: { type: 'Feature', properties: target.properties, geometry: target.geometry } });
+          data: { type: 'Feature', properties: {}, geometry: discPolygon(row.lng, row.lat, 16) } });
         map.addLayer({ id: 'focusbld', source: 'focusbld', type: 'fill-extrusion',
           paint: { 'fill-extrusion-color': col,
-                   'fill-extrusion-height': ['coalesce', ['get', 'height'], 18],
-                   'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
-                   'fill-extrusion-opacity': 0.96 } });
+                   'fill-extrusion-height': 40,
+                   'fill-extrusion-base': 0,
+                   'fill-extrusion-opacity': 0.9 } });
       });
     }
     function setPresentation(on) {

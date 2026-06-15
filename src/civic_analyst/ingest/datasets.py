@@ -54,6 +54,26 @@ REGISTRY: dict[str, Dataset] = {
         geo="address",
         notes="Ties a premises to an operator entity for the knowledge graph.",
     ),
+    # --- dynamic, time-marginal datasets (the observed-flow signal) --------------
+    # Unlike the static address attributes above, these carry a TIME axis: counts /
+    # boardings in repeated buckets. They are the "density snapshot over time" shape
+    # the LearnedDynamics lens consumes (docs/research/tpf-and-data-driven-lenses.md)
+    # and that the deterministic CongestionNowcast lens calibrates the kernel against.
+    "tmc": Dataset(
+        slug="traffic-volumes-at-intersections-for-all-modes",
+        title="Traffic Volumes — Multimodal Intersection Turning-Movement Counts",
+        cadence="daily",
+        geo="intersection",
+        notes="Cars/cyclists/PEDESTRIANS in 15-min buckets at intersections (lat/lng). "
+        "Per-node observed throughput vs time — no per-person trajectories.",
+    ),
+    "ttc_ridership": Dataset(
+        slug="ttc-ridership-analysis",
+        title="TTC Ridership Analysis",
+        cadence="periodic",
+        geo="station / route",
+        notes="Boardings (first point of payment) — a real source term for transit relays.",
+    ),
 }
 
 

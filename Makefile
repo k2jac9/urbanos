@@ -86,9 +86,12 @@ funnel-off-all:
 	@tailscale funnel --https=8443 off 2>/dev/null && echo "Funnel off — urban_os (:8443) public URL is down." \
 	  || echo "urban_os Funnel was not on (or tailscale unavailable)."
 
-# Rebuild the real downtown slice from the live dataset.
+# Rebuild the real downtown slices from the live datasets (static civic + dynamic
+# multimodal counts). Both are offline-safe: a network failure leaves existing
+# slices in place and the synthetic fallbacks cover dev/CI.
 demo-data:
 	PYTHONPATH=src $(PYTHON) scripts/build_demo_slice.py
+	PYTHONPATH=src $(PYTHON) scripts/fetch_tmc.py
 
 # Quick deterministic check (synthetic fixtures): prints a populated report and exits.
 # 100 Queen St W → two independent indices (ADR 0014):

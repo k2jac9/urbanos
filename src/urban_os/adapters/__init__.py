@@ -12,6 +12,8 @@ from .toronto import (
     civic_activity_by_node,
     civic_safety_by_node,
     downtown_scenario,
+    observed_counts_by_node,
+    reset_observed_counts_cache,
 )
 
 __all__ = [
@@ -19,4 +21,6 @@ __all__ = [
     "downtown_scenario",
     "civic_safety_by_node",
     "civic_activity_by_node",
+    "observed_counts_by_node",
+    "reset_observed_counts_cache",
 ]

@@ -300,3 +300,108 @@ def civic_activity_by_node(
     except Exception as exc:
         _log.warning("civic activity overlay failed, using synthetic fallback: %s", exc)
         return _synthetic_safety_by_node(substrate)
+
+
+# --- observed time-series fusion (the temporal twin of the civic overlays) -------
+# Where the civic overlays above fuse a STATIC per-address scalar onto each node, the
+# functions below fuse a TIME-VARYING per-location count series onto each node — the
+# observed-throughput marginal the CongestionNowcast lens calibrates against. Same
+# proximity kernel, same injectable-provider + synthetic-fallback shape (ADR-0023).
+
+_OBSERVED_COUNTS_CACHE: list | None = None
+
+
+def reset_observed_counts_cache() -> None:
+    """Clear the cached observed-count records (parity with the civic-address cache;
+    lets tests/long-running servers reset the process-global deterministically)."""
+    global _OBSERVED_COUNTS_CACHE
+    _OBSERVED_COUNTS_CACHE = None
+
+
+def _default_observed_counts() -> list:
+    """Default observed-count provider: the TMC 15-min slice via civic_analyst's
+    time-series loader, read ONCE and cached (the file is small and immutable for a
+    run). The only place the adapter reaches into civic ingest for counts; callers
+    wanting isolation inject their own provider."""
+    global _OBSERVED_COUNTS_CACHE
+    if _OBSERVED_COUNTS_CACHE is None:
+        from civic_analyst.ingest import timeseries
+
+        _OBSERVED_COUNTS_CACHE = timeseries.load_counts()
+    return _OBSERVED_COUNTS_CACHE
+
+
+def _synthetic_counts_by_node(substrate) -> dict[str, dict[float, float]]:
+    """Deterministic placeholder observed-count series (no real data needed): a single
+    Gaussian-in-time throughput bump per non-sink node, scaled by node capacity, on a
+    15-min grid over the demo window. Keeps Urban-OS standalone and tests offline."""
+    import numpy as np
+
+    cap = substrate.capacity.astype(float)
+    peak = float(np.where(~substrate.is_sink, cap, 0.0).max()) or 1.0
+    bins = [float(m) for m in range(0, 121, 15)]
+    center, width = 60.0, 25.0
+    out: dict[str, dict[float, float]] = {}
+    for i, nid in enumerate(substrate.ids):
+        scale = 0.0 if substrate.is_sink[i] else float(cap[i]) / peak
+        out[nid] = {
+            b: scale * 1000.0 * float(np.exp(-0.5 * ((b - center) / width) ** 2))
+            for b in bins
+        }
+    return out
+
+
+def _observed_counts_by_node(
+    substrate, *, mode: str | None = None, radius_deg: float = 0.0045, provider=None
+) -> dict[str, dict[float, float]]:
+    """Map each substrate node → a ``{minute: count}`` series, by proximity-weighted
+    averaging of the observed location counts in each 15-min bin. The temporal analogue
+    of :func:`_civic_field_by_node`. ``minute`` is rebased so the first observed bin is
+    0 (a relative observed-time axis; aligning it to the sim clock is the calibration
+    lens's job — kept out of the data layer so this stays honest). Raises on an empty
+    provider so the wrapper can fall back to a synthetic series."""
+    import numpy as np
+
+    recs = (provider or _default_observed_counts)()
+    recs = [r for r in recs if r.get("lat") is not None and r.get("lng") is not None]
+    if mode:
+        recs = [r for r in recs if r.get("mode") in (mode, "all")]
+    if not recs:
+        raise RuntimeError("no observed counts loaded")
+    t0 = min(float(r["minute"]) for r in recs)
+    by_bin: dict[float, list] = {}
+    for r in recs:
+        by_bin.setdefault(float(r["minute"]) - t0, []).append(r)
+    out: dict[str, dict[float, float]] = {}
+    for i, nid in enumerate(substrate.ids):
+        la, lo = float(substrate.lat[i]), float(substrate.lng[i])
+        series: dict[float, float] = {}
+        for b in sorted(by_bin):
+            num = den = 0.0
+            for r in by_bin[b]:
+                dlat = r["lat"] - la
+                dlng = (r["lng"] - lo) * np.cos(np.radians(la))
+                w = float(np.exp(-(dlat * dlat + dlng * dlng) / (radius_deg * radius_deg)))
+                num += w * float(r["volume"])
+                den += w
+            if den > 0:
+                series[b] = num / den
+        out[nid] = series
+    return out
+
+
+def observed_counts_by_node(
+    substrate, *, mode: str | None = None, radius_deg: float = 0.0045, provider=None
+) -> dict[str, dict[float, float]]:
+    """Per-node OBSERVED throughput series — the real Toronto 15-min counts (TMC) lifted
+    onto the substrate by proximity, ``{node_id: {minute: count}}``. ``mode`` optionally
+    filters to e.g. ``"ped"``/``"bike"`` (records tagged ``"all"`` always pass). Falls
+    back to a deterministic synthetic series when no count data is present, so the
+    calibration lens still runs offline."""
+    try:
+        return _observed_counts_by_node(
+            substrate, mode=mode, radius_deg=radius_deg, provider=provider
+        )
+    except Exception as exc:
+        _log.warning("observed-count fusion failed, using synthetic fallback: %s", exc)
+        return _synthetic_counts_by_node(substrate)

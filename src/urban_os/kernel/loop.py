@@ -90,6 +90,7 @@ class Simulation:
         self.seed = seed
 
     def run(self, steps: int, *, record_frames: bool = True, frame_every: int = 1) -> SimResult:
+        frame_every = max(1, frame_every)  # guard internal callers; HTTP enforces ge=1
         sub = self.substrate
         state = State(sub, self.params)
         state.params["dt"] = self.dt  # lenses read dt to integrate rates over a step

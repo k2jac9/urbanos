@@ -29,11 +29,14 @@ whole point of an adapter).
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 import networkx as nx
 
 from ..kernel.state import Substrate
+
+_log = logging.getLogger(__name__)
 
 # (id, label, lat, lng, capacity[persons], group) — real downtown coordinates.
 # `capacity` is a reference comfortable occupancy; load can exceed it (ρ > 1 is
@@ -275,7 +278,8 @@ def civic_safety_by_node(
             substrate, field="risk_safety", radius_deg=radius_deg,
             address_provider=address_provider,
         )
-    except Exception:
+    except Exception as exc:
+        _log.warning("civic safety overlay failed, using synthetic fallback: %s", exc)
         return _synthetic_safety_by_node(substrate)
 
 
@@ -293,7 +297,8 @@ def civic_activity_by_node(
             substrate, field="risk_activity", radius_deg=radius_deg,
             address_provider=address_provider,
         )
-    except Exception:
+    except Exception as exc:
+        _log.warning("civic activity overlay failed, using synthetic fallback: %s", exc)
         return _synthetic_safety_by_node(substrate)
 
 

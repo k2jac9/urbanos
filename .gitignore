@@ -13,6 +13,8 @@ ruvector.db
 # Secrets / env
 .env
 .env.*
+# committed onboarding template (placeholders only)
+!.env.example
 *.key
 *.pem
 

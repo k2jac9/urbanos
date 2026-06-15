@@ -29,12 +29,15 @@ baseline is always part of the search and the reported saving is honest.
 from __future__ import annotations
 
 import itertools
+import logging
 from dataclasses import dataclass, field
 
 from . import surrogate as _surrogate
 from .kernel.loop import SimResult
 from .kernel.operators import Lens, Lever
 from .kernel.state import Substrate
+
+_log = logging.getLogger(__name__)
 
 
 def objective(result: SimResult, lenses: list[Lens]) -> float:
@@ -193,8 +196,8 @@ def optimize(
         if sur is not None:  # advisory only — recorded next to the exact J
             try:
                 trial["J_surrogate"] = sur.predict(params)
-            except Exception:
-                pass
+            except Exception as exc:  # advisory only — never blocks the exact J
+                _log.debug("J surrogate predict failed, omitting advisory: %s", exc)
         trials.append(trial)
         if J < best_J:
             best_params, best_result, best_J = params, result, J

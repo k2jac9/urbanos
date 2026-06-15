@@ -53,6 +53,53 @@ def native(obj):
     return obj  # str / None / already-native pass through unchanged
 
 
+def simulate_frames(result, sub) -> list[dict]:
+    """Trim the dead timeline tail off a run and serialize the kept frames.
+
+    The crowd fully drains well before the fixed horizon, so the last ~40% of
+    frames are all-zero padding that makes the slider/playback span a window where
+    nothing happens. We drop trailing frames whose total node load is below a small
+    epsilon, keeping a short "drained" coda for a clean end. This touches ONLY the
+    returned/displayed frame list — the physics, metrics series, and peak readout
+    (computed over every step via ``result.peak``) are untouched. The peak frame is
+    always retained. Returns native-python, payload-sized node frames.
+    """
+    raw = result.frames
+    peak_t = float(result.peak_congestion()["t"])
+    _LOAD_EPS = 1.0  # total people on the network below this == "drained"
+    _CODA = 2        # keep this many frames past the last active one
+    last_active = -1
+    for idx, fr in enumerate(raw):
+        if float(np.sum(fr["load"])) >= _LOAD_EPS or float(fr["t"]) <= peak_t:
+            last_active = idx
+    if last_active < 0:  # degenerate: nothing ever active — keep frames as-is
+        kept = list(range(len(raw)))
+    else:
+        kept = list(range(min(len(raw), last_active + 1 + _CODA)))
+
+    frames = []
+    for idx in kept:
+        fr = raw[idx]
+        cong = fr["congestion"]
+        load = fr["load"]
+        risk = fr["risk"]
+        frames.append(
+            {
+                "t": r(fr["t"], 1),
+                "nodes": [
+                    {
+                        "id": sub.ids[i],
+                        "load": r(load[i], 1),
+                        "congestion": r(cong[i]),
+                        "risk": r(risk[i]),
+                    }
+                    for i in range(sub.n)
+                ],
+            }
+        )
+    return frames
+
+
 def peak_dict(result) -> dict:
     """A run's peak-congestion summary as a native dict (node/label/congestion/t)."""
     p = result.peak_congestion()

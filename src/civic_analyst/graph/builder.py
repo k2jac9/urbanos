@@ -79,7 +79,10 @@ def normalize_address(raw: str) -> str:
     Toronto open data (embedded 'None' for missing units, trailing postal codes,
     city/province suffixes, varied street-type spellings, unit/suite noise). The
     harder fuzzy entity-resolution is the local-LLM job — see agents/subagents."""
-    s = raw.upper().strip()
+    # Drop a UTF-8 BOM first: str.strip() does NOT remove U+FEFF, so a
+    # BOM-prefixed feed row (common in Excel/Windows CSV exports) would otherwise
+    # fail to join with the clean address key and silently drop its records.
+    s = raw.replace("\ufeff", "").upper().strip()
     # '#' introduces a unit; turn it into a UNIT marker so the unit segment is dropped
     # below (and a trailing unit number can't masquerade as a street number).
     s = s.replace("#", " UNIT ")

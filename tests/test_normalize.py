@@ -71,12 +71,7 @@ def test_two_spellings_collapse_to_same_key():
     )
 
 
-@pytest.mark.xfail(
-    reason="BUG: a leading UTF-8 BOM (\\ufeff) is not stripped — str.strip() "
-    "leaves it, so a BOM-prefixed feed row will NOT join with the clean key. "
-    "Pinned here as a known defect; not fixed (out of scope: src/ is read-only).",
-    strict=True,
-)
 def test_leading_bom_is_stripped():
-    # Desired behavior (currently fails): BOM-prefixed address joins cleanly.
+    # A BOM-prefixed feed row (common in Excel/Windows CSV exports) joins cleanly
+    # with the clean address key — normalize_address strips U+FEFF first.
     assert normalize_address("﻿100 Queen St W") == "100 QUEEN ST W"

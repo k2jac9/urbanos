@@ -14,8 +14,6 @@ proxy (flagged in provenance) — not a demand-elasticity model.
 """
 from __future__ import annotations
 
-import numpy as np
-
 from ..kernel.loop import SimResult
 from ..kernel.operators import Lens
 from ..kernel.state import State

@@ -10,7 +10,6 @@ compute backend differs (the GPU win is at city scale, not the demo's ~27 pins).
 """
 from __future__ import annotations
 
-import math
 import os
 
 import numpy as np

@@ -3,6 +3,8 @@
 .mcp.json
 .swarm/
 .claude-flow/
+claude-flow.config.json
+data/memory/
 agentdb.rvf
 agentdb.rvf.lock
 *.rvf

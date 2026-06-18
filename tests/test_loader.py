@@ -11,13 +11,13 @@ _DEMO_DATA = Path(__file__).resolve().parent.parent / "demo_data"
 
 
 def _write(p: Path, name: str, content: str) -> None:
-    (p / name).write_text(textwrap.dedent(content).strip() + "\n")
+    (p / name).write_text(textwrap.dedent(content).strip() + "\n", encoding="utf-8")
 
 
 def _write_raw(p: Path, name: str, content: str) -> None:
     """Write content verbatim (no dedent/strip) — for headers with exact
     whitespace/BOM that the matcher must tolerate."""
-    (p / name).write_text(content)
+    (p / name).write_text(content, encoding="utf-8")
 
 
 def test_loads_single_address_and_composite_address(tmp_path: Path):

@@ -1,17 +1,17 @@
-httpx>=0.27
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2.6
-pydantic-settings>=2.2
-networkx>=3.2
-numpy>=1.26
+httpx>=0.28
+fastapi>=0.137
+uvicorn[standard]>=0.49
+pydantic>=2.13
+pydantic-settings>=2.14
+networkx>=3.6
+numpy>=2.4
 # Ingest dataframe engine (CPU everywhere). The RAPIDS cuDF GPU engine
 # (collect(engine="gpu")) accelerates it on the GB10 — see requirements-gpu.txt.
-polars>=1.0
+polars>=1.41
 # pandas is retained as the deterministic ingest fallback when Polars is absent.
-pandas>=2.2
-python-dotenv>=1.0
-mcp>=1.2
+pandas>=3.0
+python-dotenv>=1.2
+mcp>=1.28
 
 # dev
-pytest>=8.0
+pytest>=9.0

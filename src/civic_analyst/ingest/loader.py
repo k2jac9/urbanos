@@ -153,7 +153,7 @@ def _address(row: dict[str, Any], plan: dict[str, Any]) -> str | None:
 
 def _read_rows(path: Path) -> tuple[list[str], list[dict[str, Any]]]:
     if path.suffix.lower() == ".json":
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, list):
             rows = data
         elif isinstance(data, dict):

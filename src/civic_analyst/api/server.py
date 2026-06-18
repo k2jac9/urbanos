@@ -122,7 +122,7 @@ app.mount("/static", StaticFiles(directory=_STATIC), name="static")
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     try:
-        return (_STATIC / "map.html").read_text()
+        return (_STATIC / "map.html").read_text(encoding="utf-8")
     except OSError as exc:  # missing/unreadable page asset — fail loudly, not blank
         raise HTTPException(status_code=500, detail="map UI asset unavailable") from exc
 

@@ -46,6 +46,7 @@ from urban_os.serialize import (
 )
 from urban_os.services import (
     BENEFIT_DEFINITIONS,
+    calibration_report as _calibration_report,
     cross_domain_block as _cross_domain_block,
     cross_domain_components as _cross_domain_components,
     extra_lens_report as _extra_lens_report,
@@ -367,6 +368,11 @@ def lenses_endpoint(
             # baseline/optimized/saved dollars + one natural-units metric, at these
             # exact levers. NOT part of combined_cost / cross_domain_benefit.
             "extra_lenses": _extra_lens_report(extra, baseline, current),
+            # Data-driven calibration (advisory-only, Phase 1): how well the kernel's
+            # crowd profile matches the REAL observed Toronto counts (TMC), as a
+            # scale-free shape-agreement score in 0..1. No dollars, no lever influence —
+            # a *trust* signal reported alongside the exact kernel, never replacing it.
+            "calibration": _calibration_report(extra, current),
             "benefit_definitions": BENEFIT_DEFINITIONS,
         }
     )

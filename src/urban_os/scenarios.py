@@ -12,9 +12,14 @@ that Economic populates (ADR-0007).
 """
 from __future__ import annotations
 
-from .adapters import civic_activity_by_node, civic_safety_by_node
+from .adapters import (
+    civic_activity_by_node,
+    civic_safety_by_node,
+    observed_counts_by_node,
+)
 from .lenses import (
     BusinessFlow,
+    CongestionNowcastLens,
     EconomicLens,
     EmissionsLens,
     EmsAccessLens,
@@ -80,12 +85,20 @@ def extra_display_lenses(sc=None) -> list:
 
     When a scenario ``sc`` is given, ``NoiseLivabilityLens`` is grounded in the REAL
     civic Activity overlay (building permits + business licences fused onto nodes,
-    ADR-0014) — the same address→node fusion ``SafetyLens`` uses. Without ``sc`` (or
-    if civic data is absent) it falls back to its deterministic synthetic weight.
+    ADR-0014) — the same address→node fusion ``SafetyLens`` uses — and
+    ``CongestionNowcastLens`` is grounded in the REAL observed-count series (Toronto
+    TMC 15-min counts fused onto nodes, the temporal twin of that fusion). Without
+    ``sc`` (or if data is absent) both fall back to deterministic synthetic series.
+
+    ``CongestionNowcastLens`` is the data-driven *calibration* lens (Phase 1 of
+    ``docs/research/tpf-and-data-driven-lenses.md``): advisory-only, no levers, no
+    cost — it reports how well the kernel's crowd profile matches what was actually
+    measured, and like the others is excluded from the optimizer's objective ``J``.
     """
-    noise = (
-        NoiseLivabilityLens(civic_activity_by_node(sc.substrate))
-        if sc is not None
-        else NoiseLivabilityLens()
-    )
-    return [EmsAccessLens(), EmissionsLens(), noise, FareRevenueLens()]
+    if sc is not None:
+        noise = NoiseLivabilityLens(civic_activity_by_node(sc.substrate))
+        nowcast = CongestionNowcastLens(observed_counts_by_node(sc.substrate))
+    else:
+        noise = NoiseLivabilityLens()
+        nowcast = CongestionNowcastLens()
+    return [EmsAccessLens(), EmissionsLens(), noise, FareRevenueLens(), nowcast]

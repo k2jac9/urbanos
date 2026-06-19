@@ -60,9 +60,16 @@ def extra_lens_report(lenses, baseline_result, current_result) -> dict:
     Reads each lens's ``cost`` off the SAME two sims the /lenses endpoint already
     runs (the lenses ride along in the stack but are excluded from ``J``), so this
     adds no extra simulations and cannot move the headline numbers. Each entry also
-    carries one human metric in natural units (kg, person-minutes, riders)."""
+    carries one human metric in natural units (kg, person-minutes, riders).
+
+    Only the *priced* display lenses (those in ``_EXTRA_LENS_METRIC``) appear here.
+    Advisory-only lenses that carry no dollar cost (e.g. the CongestionNowcast
+    calibration lens, which reports a trust score rather than a harm) are surfaced
+    through their own endpoint block, not as a $0 row that would read as "no harm"."""
     out: dict[str, dict] = {}
     for ln in lenses:
+        if ln.name not in _EXTRA_LENS_METRIC:
+            continue
         b = float(ln.cost(baseline_result))
         c = float(ln.cost(current_result))
         key, how, label = _EXTRA_LENS_METRIC.get(ln.name, (None, "sum", ln.name))
@@ -80,6 +87,26 @@ def extra_lens_report(lenses, baseline_result, current_result) -> dict:
             }
         out[ln.name] = entry
     return out
+
+
+def calibration_report(lenses, result) -> dict:
+    """Run-level data-driven calibration figures (Phase 1, advisory-only).
+
+    Finds the ``congestion_nowcast`` lens in the stack (if present) and returns its
+    kernel-vs-observed shape-agreement summary off the SAME sim — no extra run, no
+    influence on ``J`` or the chosen lever. When the lens is absent or never aligned
+    (no observed data), reports ``calibrated: False`` so the UI can say "not
+    calibrated" instead of showing a misleading 0.0 fit."""
+    nowcast = next((ln for ln in lenses if ln.name == "congestion_nowcast"), None)
+    if nowcast is None:
+        return {"calibrated": False, "mean_fit": 0.0, "min_fit": 0.0, "n_bins": 0}
+    summary = nowcast.calibration_summary()
+    return {
+        "calibrated": summary["n_bins"] > 0,
+        "mean_fit": _r(summary["mean_fit"], 3),
+        "min_fit": _r(summary["min_fit"], 3),
+        "n_bins": summary["n_bins"],
+    }
 
 
 def four_lens_stack(sc):

@@ -31,6 +31,20 @@ def test_tools_operate_on_loaded_graph():
     assert "risk_score" not in report
 
 
+def test_load_is_idempotent():
+    """Reloading replaces, never accumulates, into the process-global graph.
+
+    Guards the test-order fragility that surfaced when an unrelated test file
+    shifted collection order: a second load() used to double every edge and
+    drift risk_safety 0.593 -> 0.835 -> 0.933. load() must be repeatable.
+    """
+    mcp_server.load(FIXTURES)
+    first = mcp_server.top_risk(limit=1)[0]["risk_safety"]
+    for _ in range(3):
+        mcp_server.load(FIXTURES)
+    assert mcp_server.top_risk(limit=1)[0]["risk_safety"] == first == 0.593
+
+
 def test_build_server_registers_expected_tools():
     """The MCP server exposes the analyst's capabilities as named tools."""
     pytest.importorskip("mcp", reason="mcp runtime not installed")

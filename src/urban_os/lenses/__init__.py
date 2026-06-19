@@ -20,6 +20,7 @@ A lens plugs domain behaviour into the kernel through the four-operator contract
 from __future__ import annotations
 
 from .business_flow import BusinessFlow
+from .congestion_nowcast import CongestionNowcastLens
 from .economic import EconomicLens
 from .emissions import EmissionsLens
 from .ems_access import EmsAccessLens
@@ -41,4 +42,7 @@ __all__ = [
     "EmissionsLens",
     "NoiseLivabilityLens",
     "FareRevenueLens",
+    # Data-driven calibration lens (advisory-only, no levers, no cost — Phase 1 of
+    # docs/research/tpf-and-data-driven-lenses.md): kernel-vs-observed agreement.
+    "CongestionNowcastLens",
 ]

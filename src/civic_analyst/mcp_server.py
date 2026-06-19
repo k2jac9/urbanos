@@ -33,7 +33,14 @@ MAX_LIMIT = 500
 
 
 def load(data_dir: Path | None = None) -> dict[str, int]:
-    """Populate the shared graph from pre-downloaded data."""
+    """Populate the shared graph from pre-downloaded data.
+
+    Idempotent: clears the process-global graph first so a reload *replaces*
+    rather than accumulates. Without this, calling load() twice doubles every
+    edge (MultiDiGraph allows parallels), drifting risk scores upward — a real
+    bug for any client that reloads, and a source of test-order fragility.
+    """
+    _graph.clear()
     return load_into_graph(_graph, data_dir or settings.data_dir)
 
 

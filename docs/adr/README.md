@@ -21,3 +21,7 @@ supersede older ones only when explicitly marked.
 - [ADR-0016](0016-shelter-interior-optimum-coverage-premium.md) — Convex coverage premium + fine grid → shelter is a genuine *interior* optimum (release 16 + 50% shelter), not a corner
 - [ADR-0017](0017-urbanos-ui-live-breakdown-and-timeline-trim.md) — Urban-OS UI: live J-breakdown that tracks levers, optimizer-card invalidation, trim the dead timeline tail (3rd audit's other findings refuted)
 - [ADR-0018](0018-fifa-convergence-crunch-substrate.md) — FIFA-window convergence crunch: multi-venue EventSurge (4 concurrent let-outs, 140,800 people) into the Union/Exhibition-GO corridor under one coordinated release lever; real exit lines replace abstract sinks
+- [ADR-0024](0024-rapids-gpu-accelerator-seams.md) — RAPIDS GPU accelerator seams (nx-cugraph substrate dijkstra + cuDF-via-Polars ingest), opt-in with CPU fallback
+- [ADR-0025](0025-cuopt-flow-and-cuml-clusters.md) — cuOpt evacuation max-flow `/flow` + cuML risk-hotspot `/clusters`, opt-in GPU with networkx/CPU fallback
+- [ADR-0027](0027-tensorrt-llm-and-physicsnemo-surrogate-seams.md) — TensorRT-LLM narrator runtime (config not code) + PhysicsNeMo J-surrogate seam (interface-only), opt-in, exact kernel decides
+- [ADR-0028](0028-learned-dynamics-action-matching-floor.md) — Learned-dynamics lens: the Action-Matching floor (least-squares velocity fit from TMC marginals), advisory-only, opt-in, exact kernel decides

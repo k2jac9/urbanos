@@ -52,6 +52,7 @@ from urban_os.services import (
     extra_lens_report as _extra_lens_report,
     four_lens_J as _four_lens_J,
     four_lens_stack as _four_lens_stack,
+    learned_dynamics_report as _learned_dynamics_report,
 )
 
 # The civic address-risk app, mounted same-origin at /civic so the unified shell
@@ -373,6 +374,12 @@ def lenses_endpoint(
             # scale-free shape-agreement score in 0..1. No dollars, no lever influence —
             # a *trust* signal reported alongside the exact kernel, never replacing it.
             "calibration": _calibration_report(extra, current),
+            # Learned-dynamics floor (advisory-only, Phase 2, ADR-0028): off by default
+            # (URBANOS_LEARNED_DYNAMICS) → available:False. When on, fits a velocity field
+            # from the observed marginals, rolls it out, and reports whether the LEARNED
+            # field beats the exact kernel at matching the observed counts — labelled
+            # learned/approximate, no dollars, no lever, never moves a headline number.
+            "learned_dynamics": _learned_dynamics_report(extra, current),
             "benefit_definitions": BENEFIT_DEFINITIONS,
         }
     )

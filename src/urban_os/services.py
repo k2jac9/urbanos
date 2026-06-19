@@ -9,6 +9,7 @@ handlers thin and lets the benefit math be unit-tested without the web layer.
 from __future__ import annotations
 
 from .kernel import Simulation
+from .learned_dynamics import evaluate as learned_dynamics_evaluate
 from .optimize import objective
 from .scenarios import default_lens_stack
 from .serialize import r as _r
@@ -107,6 +108,22 @@ def calibration_report(lenses, result) -> dict:
         "min_fit": _r(summary["min_fit"], 3),
         "n_bins": summary["n_bins"],
     }
+
+
+def learned_dynamics_report(lenses, result) -> dict:
+    """Run-level Action-Matching-floor diagnostic (Phase 2, advisory-only — ADR-0028).
+
+    Reuses the observed-count series the ``congestion_nowcast`` lens already carries (no
+    extra data plumbing), fits a learned velocity field from those marginals, rolls it
+    out, and reports whether the learned field beats the exact kernel at matching the
+    observed counts. Like the Phase-1 calibration it runs off the SAME finished sim — no
+    extra simulation, no lever, no ``J`` contribution — so it cannot move any headline
+    number (honesty #1). Off by default (``URBANOS_LEARNED_DYNAMICS`` unset) → a clean
+    ``available: False`` no-op. Every figure is stamped ``provenance="learned/approximate"``
+    so it is never mistaken for a kernel-exact number (honesty #3)."""
+    nowcast = next((ln for ln in lenses if ln.name == "congestion_nowcast"), None)
+    node_counts = getattr(nowcast, "node_counts", None) if nowcast is not None else None
+    return learned_dynamics_evaluate(node_counts, result).as_dict()
 
 
 def four_lens_stack(sc):

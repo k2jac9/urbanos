@@ -1,0 +1,630 @@
+lat,lng,severity,road_class
+43.64828,-79.39661,3,Major Arterial Road
+43.64854,-79.39741,3,Major Arterial Road
+43.630343,-79.420645,3,Major Arterial Road
+43.630426,-79.419784,3,Major Arterial Road
+43.631326,-79.414466,3,Major Arterial Road
+43.631114,-79.415489,3,Major Arterial Road
+43.630588,-79.418625,3,Major Arterial Road
+43.632435,-79.41096,3,Major Arterial Road
+43.634479,-79.408712,3,Major Arterial Road
+43.635272,-79.407617,3,Major Arterial Road
+43.635481,-79.406714,3,Major Arterial Road
+43.6301,-79.423238,3,Major Arterial Road
+43.635897,-79.401986,3,Major Arterial Road
+43.635747,-79.403146,3,Major Arterial Road
+43.636485,-79.39965,3,Major Arterial Road
+43.635737,-79.40329,3,Major Arterial Road
+43.635615,-79.405087,3,Major Arterial Road
+43.629971,-79.424835,3,Major Arterial Road
+43.630948,-79.428167,3,Major Arterial Road
+43.68969,-79.34891,3,Major Arterial Road
+43.68946,-79.34882,3,Major Arterial Road
+43.64218,-79.41131,3,Major Arterial Road
+43.68366,-79.34664,3,Major Arterial Road
+43.68433,-79.34689,3,Major Arterial Road
+43.64849,-79.37762,3,Major Arterial Road
+43.68401,-79.34677,3,Major Arterial Road
+43.67913,-79.34396,3,Major Arterial Road
+43.68447,-79.34694,3,Major Arterial Road
+43.65667,-79.4067,3,Major Arterial Road
+43.64816,-79.37748,3,Major Arterial Road
+43.68329,-79.34649,3,Major Arterial Road
+43.68452,-79.34696,3,Major Arterial Road
+43.68456,-79.34698,3,Major Arterial Road
+43.68481,-79.34707,3,Major Arterial Road
+43.68331,-79.3465,3,Major Arterial Road
+43.68118,-79.42827,3,Major Arterial Road
+43.68361,-79.41603,3,Major Arterial Road
+43.68639,-79.40272,3,Major Arterial Road
+43.67248,-79.41739,3,Major Arterial Road
+43.67391,-79.39153,3,Major Arterial Road
+43.67528,-79.40177,3,Major Arterial Road
+43.67257,-79.417,3,Major Arterial Road
+43.6738,-79.41123,3,Major Arterial Road
+43.67374,-79.41149,3,Major Arterial Road
+43.67391,-79.41069,3,Major Arterial Road
+43.67325,-79.41389,3,Major Arterial Road
+43.67428,-79.4093,3,Major Arterial Road
+43.67315,-79.41441,3,Major Arterial Road
+43.67304,-79.4149,3,Major Arterial Road
+43.67251,-79.41726,3,Major Arterial Road
+43.67299,-79.41512,3,Major Arterial Road
+43.67285,-79.41572,3,Major Arterial Road
+43.67447,-79.40892,3,Major Arterial Road
+43.67454,-79.40861,3,Major Arterial Road
+43.67264,-79.41664,3,Major Arterial Road
+43.67272,-79.41632,3,Major Arterial Road
+43.67214,-79.41899,3,Major Arterial Road
+43.67316,-79.41436,3,Major Arterial Road
+43.67386,-79.41093,3,Major Arterial Road
+43.67209,-79.4192,3,Major Arterial Road
+43.67239,-79.41781,3,Major Arterial Road
+43.67232,-79.41814,3,Major Arterial Road
+43.67227,-79.41838,3,Major Arterial Road
+43.67202,-79.41953,3,Major Arterial Road
+43.67193,-79.41998,3,Major Arterial Road
+43.67187,-79.42025,3,Major Arterial Road
+43.67219,-79.41874,3,Major Arterial Road
+43.65697,-79.35116,3,Major Arterial Road
+43.67907,-79.34428,3,Major Arterial Road
+43.660923,-79.391813,3,Major Arterial Road
+43.6587,-79.395903,3,Major Arterial Road
+43.658641,-79.396213,3,Major Arterial Road
+43.658485,-79.397036,3,Major Arterial Road
+43.659903,-79.39029,3,Major Arterial Road
+43.659859,-79.390495,3,Major Arterial Road
+43.66872,-79.394141,3,Major Arterial Road
+43.661446,-79.392278,3,Major Arterial Road
+43.6592,-79.393485,3,Major Arterial Road
+43.659078,-79.394066,3,Major Arterial Road
+43.658954,-79.394682,3,Major Arterial Road
+43.658827,-79.395295,3,Major Arterial Road
+43.660609,-79.391164,3,Major Arterial Road
+43.660257,-79.390676,3,Major Arterial Road
+43.65983,-79.390627,3,Major Arterial Road
+43.663069,-79.393209,3,Major Arterial Road
+43.662424,-79.392909,3,Major Arterial Road
+43.667265,-79.393526,3,Major Arterial Road
+43.666373,-79.393151,3,Major Arterial Road
+43.665792,-79.39339,3,Major Arterial Road
+43.665333,-79.39383,3,Major Arterial Road
+43.665021,-79.393897,3,Major Arterial Road
+43.664806,-79.393857,3,Major Arterial Road
+43.664079,-79.393588,3,Major Arterial Road
+43.658701,-79.389984,3,Major Arterial Road
+43.65753,-79.389489,3,Major Arterial Road
+43.656348,-79.388968,3,Major Arterial Road
+43.6592,-79.393485,3,Major Arterial Road
+43.64677,-79.37033,3,Major Arterial Road
+43.64676,-79.37033,3,Major Arterial Road
+43.64676,-79.37033,3,Major Arterial Road
+43.64676,-79.37033,3,Major Arterial Road
+43.64677,-79.37033,3,Major Arterial Road
+43.64675,-79.37033,3,Major Arterial Road
+43.64675,-79.37033,3,Major Arterial Road
+43.64676,-79.37033,3,Major Arterial Road
+43.66718,-79.40145,3,Major Arterial Road
+43.67454,-79.38019,3,Major Arterial Road
+43.68832,-79.38358,3,Major Arterial Road
+43.66269,-79.39023,3,Major Arterial Road
+43.6745,-79.40881,3,Major Arterial Road
+43.636485,-79.39965,3,Major Arterial Road
+43.635897,-79.401986,3,Major Arterial Road
+43.635747,-79.403146,3,Major Arterial Road
+43.630588,-79.418625,3,Major Arterial Road
+43.635615,-79.405087,3,Major Arterial Ramp
+43.635481,-79.406714,3,Major Arterial Road
+43.635272,-79.407617,3,Major Arterial Road
+43.635737,-79.40329,3,Major Arterial Road
+43.634479,-79.408712,3,Major Arterial Road
+43.632435,-79.41096,3,Major Arterial Road
+43.631326,-79.414466,3,Major Arterial Road
+43.630426,-79.419784,3,Major Arterial Road
+43.630343,-79.420645,3,Major Arterial Road
+43.6301,-79.423238,3,Major Arterial Road
+43.631114,-79.415489,3,Major Arterial Road
+43.629971,-79.424835,3,Major Arterial Road
+43.630948,-79.428167,3,Major Arterial Road
+43.636485,-79.39965,3,Major Arterial Road
+43.635897,-79.401986,3,Major Arterial Road
+43.635747,-79.403146,3,Major Arterial Road
+43.635737,-79.40329,3,Major Arterial Road
+43.635615,-79.405087,3,Major Arterial Ramp
+43.635481,-79.406714,3,Major Arterial Road
+43.635272,-79.407617,3,Major Arterial Road
+43.634479,-79.408712,3,Major Arterial Road
+43.632435,-79.41096,3,Major Arterial Road
+43.631326,-79.414466,3,Major Arterial Road
+43.631114,-79.415489,3,Major Arterial Road
+43.630588,-79.418625,3,Major Arterial Road
+43.630426,-79.419784,3,Major Arterial Road
+43.630343,-79.420645,3,Major Arterial Road
+43.6301,-79.423238,3,Major Arterial Road
+43.629971,-79.424835,3,Major Arterial Road
+43.630948,-79.428167,3,Major Arterial Road
+43.631326,-79.414466,3,Major Arterial Road
+43.631114,-79.415489,3,Major Arterial Road
+43.630588,-79.418625,3,Major Arterial Road
+43.630426,-79.419784,3,Major Arterial Road
+43.630343,-79.420645,3,Major Arterial Road
+43.6301,-79.423238,3,Major Arterial Road
+43.629971,-79.424835,3,Major Arterial Road
+43.630948,-79.428167,3,Major Arterial Road
+43.636485,-79.39965,3,Major Arterial Road
+43.635897,-79.401986,3,Major Arterial Road
+43.635747,-79.403146,3,Major Arterial Road
+43.635737,-79.40329,3,Major Arterial Road
+43.635481,-79.406714,3,Major Arterial Road
+43.635615,-79.405087,3,Major Arterial Ramp
+43.635272,-79.407617,3,Major Arterial Road
+43.634479,-79.408712,3,Major Arterial Road
+43.632435,-79.41096,3,Major Arterial Road
+43.68898,-79.38995,3,Major Arterial Road
+43.65233,-79.37977,3,Major Arterial Road
+43.65654,-79.34736,3,Major Arterial Road
+43.65288,-79.40625,3,Major Arterial Road
+43.64806,-79.38931,3,Major Arterial Road
+43.68359,-79.34661,3,Major Arterial Road
+43.683416,-79.400169,3,Major Arterial Road
+43.65244,-79.379259,3,Major Arterial Road
+43.651894,-79.381718,3,Major Arterial Road
+43.65444,-79.37826,2,Minor Arterial Road
+43.637542,-79.410124,2,Minor Arterial Road
+43.63742,-79.410079,2,Minor Arterial Road
+43.637933,-79.410289,2,Minor Arterial Road
+43.638268,-79.410434,2,Minor Arterial Road
+43.639246,-79.410852,2,Minor Arterial Road
+43.634584,-79.408822,2,Minor Arterial Road
+43.634875,-79.40906,2,Minor Arterial Road
+43.636255,-79.409632,2,Minor Arterial Road
+43.67205,-79.34204,2,Minor Arterial Road
+43.67127,-79.34172,2,Minor Arterial Road
+43.67294,-79.34241,2,Minor Arterial Road
+43.67267,-79.34229,2,Minor Arterial Road
+43.68921,-79.34994,2,Minor Arterial Road
+43.68926,-79.34968,2,Minor Arterial Road
+43.65563,-79.37266,2,Minor Arterial Road
+43.64204,-79.41197,2,Minor Arterial Road
+43.67895,-79.34484,2,Minor Arterial Road
+43.68467,-79.42153,2,Minor Arterial Road
+43.66032,-79.37188,2,Minor Arterial Road
+43.67582,-79.42217,2,Minor Arterial Road
+43.664435,-79.396958,2,Minor Arterial Road
+43.664687,-79.395742,2,Minor Arterial Road
+43.665004,-79.394217,2,Minor Arterial Road
+43.663504,-79.400056,2,Minor Arterial Road
+43.664109,-79.398445,2,Minor Arterial Road
+43.664109,-79.398445,2,Minor Arterial Road
+43.667517,-79.399836,2,Minor Arterial Road
+43.665438,-79.398983,2,Minor Arterial Road
+43.664082,-79.398433,2,Minor Arterial Road
+43.66382,-79.35193,2,Minor Arterial Road
+43.67334,-79.34257,2,Minor Arterial Road
+43.66657,-79.41961,2,Minor Arterial Road
+43.6758,-79.40254,2,Minor Arterial Road
+43.67473,-79.42829,2,Minor Arterial Road
+43.67848,-79.41017,2,Minor Arterial Road
+43.642307,-79.384444,2,Minor Arterial Road
+43.640597,-79.392841,2,Minor Arterial Road
+43.640746,-79.391495,2,Minor Arterial Road
+43.6405,-79.390011,2,Minor Arterial Road
+43.640415,-79.388923,2,Minor Arterial Road
+43.64042,-79.388844,2,Minor Arterial Road
+43.640856,-79.387623,2,Minor Arterial Road
+43.642307,-79.384444,2,Minor Arterial Road
+43.640597,-79.392841,2,Minor Arterial Road
+43.640746,-79.391495,2,Minor Arterial Road
+43.6405,-79.390011,2,Minor Arterial Road
+43.640415,-79.388923,2,Minor Arterial Road
+43.64042,-79.388844,2,Minor Arterial Road
+43.640856,-79.387623,2,Minor Arterial Road
+43.635481,-79.406714,2,Minor Arterial Road
+43.636393,-79.406841,2,Minor Arterial Road
+43.63742,-79.410079,2,Minor Arterial Road
+43.636255,-79.409632,2,Minor Arterial Road
+43.637933,-79.410289,2,Minor Arterial Road
+43.637542,-79.410124,2,Minor Arterial Road
+43.634584,-79.408822,2,Minor Arterial Road
+43.634875,-79.40906,2,Minor Arterial Road
+43.638268,-79.410434,2,Minor Arterial Road
+43.639246,-79.410852,2,Minor Arterial Road
+43.639246,-79.410852,2,Minor Arterial Road
+43.637542,-79.410124,2,Minor Arterial Road
+43.638268,-79.410434,2,Minor Arterial Road
+43.634875,-79.40906,2,Minor Arterial Road
+43.636255,-79.409632,2,Minor Arterial Road
+43.63742,-79.410079,2,Minor Arterial Road
+43.634584,-79.408822,2,Minor Arterial Road
+43.637933,-79.410289,2,Minor Arterial Road
+43.636255,-79.409632,2,Minor Arterial Road
+43.63742,-79.410079,2,Minor Arterial Road
+43.637542,-79.410124,2,Minor Arterial Road
+43.634875,-79.40906,2,Minor Arterial Road
+43.637933,-79.410289,2,Minor Arterial Road
+43.638268,-79.410434,2,Minor Arterial Road
+43.639246,-79.410852,2,Minor Arterial Road
+43.634584,-79.408822,2,Minor Arterial Road
+43.66791,-79.36945,2,Minor Arterial Road
+43.65996,-79.36622,2,Minor Arterial Road
+43.66015,-79.35772,2,Minor Arterial Road
+43.66628,-79.37833,2,Minor Arterial Road
+43.66753,-79.3726,2,Minor Arterial Road
+43.66767,-79.34278,2,Minor Arterial Road
+43.66758,-79.34274,2,Minor Arterial Road
+43.66382,-79.34455,2,Minor Arterial Road
+43.64643,-79.36196,2,Minor Arterial Road
+43.64828,-79.37537,2,Minor Arterial Road
+43.67333,-79.34257,2,Minor Arterial Road
+43.67266,-79.34229,2,Minor Arterial Road
+43.64379,-79.42919,2,Minor Arterial Road
+43.64382,-79.4292,2,Minor Arterial Road
+43.64899,-79.36163,2,Minor Arterial Road
+43.6653,-79.34505,1,Unknown
+43.65674,-79.37659,1,Local Road
+43.66236,-79.42704,1,Unknown
+43.66741,-79.42476,1,Local Road
+43.66744,-79.42464,1,Unknown
+43.66647,-79.42437,1,Local Road
+43.66287,-79.4268,1,Local Road
+43.67079,-79.41409,1,Unknown
+43.65433,-79.37875,1,Local Road
+43.67017,-79.41392,1,Local Road
+43.66244,-79.42712,1,Local Road
+43.66247,-79.42652,1,Unknown
+43.67699,-79.38983,1,Local Road
+43.67841,-79.38264,1,Local Road
+43.68152,-79.38625,1,Local Road
+43.67731,-79.38997,1,Local Road
+43.663025,-79.420915,1,Local Road
+43.662564,-79.420737,1,Local Road
+43.662564,-79.420737,1,Local Road
+43.663025,-79.420915,1,Local Road
+43.638711,-79.393133,1,Expressway Ramp
+43.63176,-79.41573,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.633021,-79.416013,1,Local Road
+43.633162,-79.41529,1,Local Road
+43.634687,-79.40974,1,Local Road
+43.636005,-79.410168,1,Local Road
+43.639296,-79.390017,1,Expressway Ramp
+43.632687,-79.424929,1,Local Road
+43.632749,-79.422627,1,Local Road
+43.632681,-79.422171,1,Local Road
+43.633639,-79.421767,1,Local Road
+43.635338,-79.418657,1,Local Road
+43.636237,-79.409826,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.633729,-79.425371,1,Local Road
+43.63388,-79.425424,1,Local Road
+43.634158,-79.425521,1,Local Road
+43.632591,-79.424931,1,Local Road
+43.67664,-79.37034,1,Local Road
+43.68381,-79.40538,1,Local Road
+43.66597,-79.36463,1,Local Road
+43.66539,-79.36385,1,Local Road
+43.68353,-79.37384,1,Local Road
+43.66976,-79.3411,1,Unknown
+43.65418,-79.36526,1,Local Road
+43.65293,-79.36473,1,Local Road
+43.66448,-79.37088,1,Local Road
+43.65417,-79.36526,1,Local Road
+43.65219,-79.36441,1,Local Road
+43.66453,-79.3709,1,Local Road
+43.66531,-79.37122,1,Local Road
+43.66607,-79.37154,1,Local Road
+43.66654,-79.37172,1,Local Road
+43.68396,-79.42385,1,Local Road
+43.67299,-79.3422,1,Local Road
+43.68255,-79.42202,1,Local Road
+43.66747,-79.42451,1,Local Road
+43.66763,-79.42377,1,Local Road
+43.66703,-79.42179,1,Local Road
+43.67024,-79.34134,1,Local Road
+43.68331,-79.42688,1,Local Road
+43.68218,-79.43,1,Local Road
+43.68209,-79.42463,1,Local Road
+43.68846,-79.42555,1,Local Road
+43.64692,-79.3934,1,Unknown
+43.65219,-79.36441,1,Local Road
+43.65307,-79.36479,1,Local Road
+43.66593,-79.36482,1,Local Road
+43.65567,-79.37279,1,Local Road
+43.66035,-79.34102,1,Unknown
+43.64242,-79.41141,1,Unknown
+43.66437,-79.34406,1,Local Road
+43.64854,-79.37748,1,Local Road
+43.68044,-79.34543,1,Local Road
+43.6863,-79.41439,1,Local Road
+43.67376,-79.37443,1,Local Road
+43.66983,-79.36373,1,Local Road
+43.66643,-79.36282,1,Local Road
+43.64854,-79.37748,1,Local Road
+43.67844,-79.34299,1,Local Road
+43.64225,-79.42693,1,Unknown
+43.68447,-79.34672,1,Local Road
+43.68632,-79.40824,1,Local Road
+43.67925,-79.38996,1,Local Road
+43.66628,-79.40889,1,Local Road
+43.68455,-79.34629,1,Local Road
+43.68908,-79.39477,1,Local Road
+43.65589,-79.41278,1,Local Road
+43.67498,-79.39476,1,Local Road
+43.67372,-79.39158,1,Local Road
+43.67321,-79.39404,1,Unknown
+43.68008,-79.38958,1,Local Road
+43.68443,-79.34689,1,Local Road
+43.68572,-79.34421,1,Local Road
+43.66819,-79.36936,1,Local Road
+43.68562,-79.34472,1,Local Road
+43.68576,-79.34398,1,Local Road
+43.68532,-79.34629,1,Local Road
+43.68543,-79.34573,1,Local Road
+43.68555,-79.34508,1,Local Road
+43.68565,-79.34459,1,Local Road
+43.68561,-79.34478,1,Local Road
+43.68547,-79.34552,1,Local Road
+43.68542,-79.34579,1,Local Road
+43.68526,-79.34661,1,Local Road
+43.68509,-79.34383,1,Local Road
+43.68532,-79.34392,1,Local Road
+43.68588,-79.34413,1,Local Road
+43.66868,-79.36712,1,Local Road
+43.66962,-79.36294,1,Local Road
+43.66947,-79.36357,1,Local Road
+43.66903,-79.36387,1,Local Road
+43.66847,-79.36364,1,Local Road
+43.68516,-79.34712,1,Local Road
+43.68362,-79.34646,1,Local Road
+43.6837,-79.34606,1,Local Road
+43.67009,-79.36384,1,Local Road
+43.66947,-79.36357,1,Local Road
+43.66881,-79.36652,1,Local Road
+43.66934,-79.36674,1,Local Road
+43.66917,-79.36667,1,Unknown
+43.66904,-79.36727,1,Local Road
+43.66895,-79.3678,1,Local Road
+43.66937,-79.36401,1,Local Road
+43.6836,-79.34655,1,Local Road
+43.68369,-79.34609,1,Local Road
+43.6857,-79.34406,1,Local Road
+43.68335,-79.39079,1,Local Road
+43.68389,-79.3874,1,Local Road
+43.68247,-79.38913,1,Local Road
+43.68292,-79.38746,1,Local Road
+43.68479,-79.38689,1,Local Road
+43.68443,-79.34689,1,Local Road
+43.6846,-79.34602,1,Local Road
+43.68455,-79.34629,1,Local Road
+43.68459,-79.34606,1,Local Road
+43.68543,-79.35365,1,Local Road
+43.65988,-79.3708,1,Unknown
+43.65893,-79.37037,1,Unknown
+43.65992,-79.37081,1,Unknown
+43.66217,-79.35988,1,Local Road
+43.65419,-79.3965,1,Local Road
+43.65532,-79.39696,1,Local Road
+43.68035,-79.40261,1,Unknown
+43.68831,-79.3988,1,Local Road
+43.66119,-79.35493,1,Expressway
+43.65895,-79.35434,1,Expressway Ramp
+43.65532,-79.39679,1,Local Road
+43.6797,-79.34507,1,Local Road
+43.65527,-79.39704,1,Local Road
+43.658043,-79.393018,1,Local Road
+43.658037,-79.393045,1,Local Road
+43.658088,-79.393064,1,Local Road
+43.661719,-79.399331,1,Local Road
+43.662601,-79.399686,1,Local Road
+43.663498,-79.400088,1,Local Road
+43.658123,-79.392642,1,Local Road
+43.658097,-79.392765,1,Local Road
+43.660859,-79.399036,1,Local Road
+43.660076,-79.39871,1,Local Road
+43.66002,-79.398922,1,Local Road
+43.665075,-79.400686,1,Local Road
+43.66526,-79.399826,1,Local Road
+43.658387,-79.391402,1,Local Road
+43.658387,-79.391402,1,Local Road
+43.66428,-79.400407,1,Local Road
+43.658735,-79.393313,1,Local Road
+43.658261,-79.398198,1,Local Road
+43.639296,-79.390017,1,Expressway Ramp
+43.638711,-79.393133,1,Expressway Ramp
+43.639296,-79.390017,1,Expressway Ramp
+43.638711,-79.393133,1,Expressway Ramp
+43.638711,-79.393133,1,Expressway Ramp
+43.639296,-79.390017,1,Expressway Ramp
+43.65538,-79.39699,1,Local Road
+43.66405,-79.35202,1,Local Road
+43.64066,-79.42961,1,Local Road
+43.67246,-79.38543,1,Local Road
+43.66692,-79.40142,1,Local Road
+43.68421,-79.40308,1,Local Road
+43.68425,-79.40309,1,Local Road
+43.67488,-79.38866,1,Local Road
+43.67487,-79.3887,1,Local Road
+43.66824,-79.4111,1,Local Road
+43.66837,-79.41117,1,Local Road
+43.6685,-79.40978,1,Local Road
+43.66487,-79.41241,1,Local Road
+43.66935,-79.41417,1,Local Road
+43.66845,-79.42573,1,Local Road
+43.66984,-79.42628,1,Local Road
+43.66931,-79.4287,1,Unknown
+43.67669,-79.37223,1,Local Road
+43.66562,-79.42324,1,Local Road
+43.66251,-79.42325,1,Local Road
+43.66776,-79.42544,1,Local Road
+43.66705,-79.42514,1,Local Road
+43.68191,-79.38801,1,Local Road
+43.68184,-79.37726,1,Local Road
+43.67776,-79.39763,1,Local Road
+43.67882,-79.39568,1,Local Road
+43.67219,-79.40604,1,Local Road
+43.68837,-79.40401,1,Local Road
+43.67675,-79.37084,1,Local Road
+43.67661,-79.38584,1,Local Road
+43.68694,-79.39987,1,Local Road
+43.68732,-79.39798,1,Local Road
+43.6894,-79.39884,1,Local Road
+43.67128,-79.37542,1,Local Road
+43.6857,-79.41162,1,Local Road
+43.68943,-79.38693,1,Unknown
+43.68974,-79.41757,1,Local Road
+43.68992,-79.41579,1,Local Road
+43.67524,-79.38269,1,Local Road
+43.67331,-79.36881,1,Local Road
+43.67677,-79.37085,1,Local Road
+43.67672,-79.37224,1,Unknown
+43.6748,-79.42274,1,Local Road
+43.67398,-79.42243,1,Local Road
+43.66837,-79.41117,1,Local Road
+43.67231,-79.42733,1,Local Road
+43.66551,-79.41002,1,Local Road
+43.67765,-79.37517,1,Local Road
+43.67524,-79.38271,1,Unknown
+43.68058,-79.40939,1,Local Road
+43.68363,-79.41592,1,Local Road
+43.68018,-79.37415,1,Local Road
+43.68663,-79.37317,1,Local Road
+43.68213,-79.39163,1,Local Road
+43.64283,-79.35108,1,Unknown
+43.66291,-79.38436,1,Local Road
+43.66668,-79.36493,1,Local Road
+43.66699,-79.367,1,Local Road
+43.66851,-79.36642,1,Local Road
+43.668,-79.36584,1,Local Road
+43.66733,-79.36548,1,Local Road
+43.66707,-79.36586,1,Local Road
+43.6678,-79.36613,1,Local Road
+43.66768,-79.36731,1,Local Road
+43.66137,-79.37142,1,Unknown
+43.66153,-79.4003,1,Local Road
+43.66134,-79.40124,1,Local Road
+43.65179,-79.37528,1,Local Road
+43.67699,-79.39009,1,Unknown
+43.67724,-79.39031,1,Local Road
+43.635945,-79.40429,1,Local Road
+43.636169,-79.405413,1,Local Road
+43.636393,-79.406841,1,Local Road
+43.636255,-79.409632,1,Local Road
+43.63634,-79.408634,1,Local Road
+43.636237,-79.409826,1,Local Road
+43.634158,-79.425521,1,Local Road
+43.632591,-79.424931,1,Local Road
+43.634687,-79.40974,1,Local Road
+43.633021,-79.416013,1,Local Road
+43.633162,-79.41529,1,Local Road
+43.63176,-79.41573,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.636005,-79.410168,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.633729,-79.425371,1,Local Road
+43.63388,-79.425424,1,Local Road
+43.632749,-79.422627,1,Local Road
+43.632681,-79.422171,1,Local Road
+43.633639,-79.421767,1,Local Road
+43.635338,-79.418657,1,Local Road
+43.633729,-79.425371,1,Local Road
+43.63388,-79.425424,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.632749,-79.422627,1,Local Road
+43.634158,-79.425521,1,Local Road
+43.632591,-79.424931,1,Local Road
+43.632681,-79.422171,1,Local Road
+43.633639,-79.421767,1,Local Road
+43.635338,-79.418657,1,Local Road
+43.636237,-79.409826,1,Local Road
+43.636005,-79.410168,1,Local Road
+43.634687,-79.40974,1,Local Road
+43.633021,-79.416013,1,Local Road
+43.633162,-79.41529,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.63176,-79.41573,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.636237,-79.409826,1,Local Road
+43.636005,-79.410168,1,Local Road
+43.633021,-79.416013,1,Local Road
+43.633162,-79.41529,1,Local Road
+43.634687,-79.40974,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.634075,-79.411864,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.633729,-79.425371,1,Local Road
+43.634158,-79.425521,1,Local Road
+43.632591,-79.424931,1,Local Road
+43.632687,-79.424929,1,Local Road
+43.632749,-79.422627,1,Local Road
+43.63388,-79.425424,1,Local Road
+43.63176,-79.41573,1,Local Road
+43.632681,-79.422171,1,Local Road
+43.633639,-79.421767,1,Local Road
+43.635338,-79.418657,1,Local Road
+43.657434,-79.343364,1,Local Road
+43.659644,-79.344279,1,Local Road
+43.65988,-79.36619,1,Unknown
+43.65968,-79.36758,1,Local Road
+43.65859,-79.36779,1,Unknown
+43.65853,-79.36776,1,Local Road
+43.6584,-79.36837,1,Local Road
+43.66973,-79.39558,1,Local Road
+43.66951,-79.34568,1,Unknown
+43.6703,-79.34609,1,Local Road
+43.66951,-79.3456,1,Local Road
+43.67032,-79.34601,1,Unknown
+43.6798,-79.34456,1,Local Road
+43.67805,-79.38896,1,Local Road
+43.67902,-79.39086,1,Local Road
+43.65789,-79.35659,1,Unknown
+43.65979,-79.35749,1,Local Road
+43.66029,-79.35714,1,Unknown
+43.64828,-79.3851,1,Local Road
+43.66336,-79.38676,1,Local Road
+43.66185,-79.38988,1,Unknown
+43.67025,-79.34131,1,Local Road
+43.67865,-79.42464,1,Unknown
+43.68838,-79.34907,1,Unknown
+43.67841,-79.42559,1,Unknown
+43.66391,-79.38414,1,Local Road
+43.64274,-79.37316,1,Local Road
+43.65233,-79.38083,1,Local Road
+43.64731,-79.36235,1,Local Road
+43.64319,-79.4024,1,Local Road
+43.66522,-79.39996,1,Local Road
+43.66522,-79.39997,1,Local Road
+43.66531,-79.39953,1,Local Road
+43.66526,-79.39979,1,Local Road
+43.66525,-79.39982,1,Unknown
+43.63005,-79.42536,1,Unknown
+43.65025,-79.38727,1,Local Road
+43.67294,-79.34241,1,Local Road
+43.65614,-79.39909,1,Local Road
+43.65694,-79.39524,1,Local Road
+43.65648,-79.39744,1,Local Road
+43.65745,-79.37879,1,Local Road
+43.68195,-79.37733,1,Local Road
+43.6825,-79.38136,1,Local Road
+43.66686,-79.39791,1,Local Road
+43.65255,-79.35839,1,Local Road
+43.65262,-79.35809,1,Local Road
+43.63615,-79.42731,1,Local Road
+43.68454,-79.34636,1,Unknown
+43.65572,-79.35093,1,Local Road
+43.68063,-79.34447,1,Local Road
+43.6806,-79.34461,1,Local Road
+43.67969,-79.34512,1,Local Road
+43.67981,-79.34451,1,Local Road
+43.68098,-79.38693,1,Local Road
+43.68156,-79.38489,1,Local Road
+43.64928,-79.39772,1,Local Road
+43.672484,-79.384938,1,Local Road
+43.68077,-79.38481,1,Local Road
+43.67915,-79.39043,1,Local Road
+43.67915,-79.39043,1,Local Road
+43.67915,-79.39043,1,Local Road
+43.64112,-79.41662,1,Local Road

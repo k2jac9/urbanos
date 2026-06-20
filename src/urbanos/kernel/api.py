@@ -53,8 +53,12 @@ from urbanos.kernel.services import (
     four_lens_J as _four_lens_J,
     four_lens_stack as _four_lens_stack,
     learned_dynamics_report as _learned_dynamics_report,
+    footfall_overlay as _footfall_overlay,
+    footfall_report as _footfall_report,
     mobility_demand_overlay as _mobility_demand_overlay,
     mobility_demand_report as _mobility_demand_report,
+    road_disruption_overlay as _road_disruption_overlay,
+    road_disruption_report as _road_disruption_report,
     road_risk_overlay as _road_risk_overlay,
     road_risk_report as _road_risk_report,
     transit_supply_overlay as _transit_supply_overlay,
@@ -395,6 +399,12 @@ def lenses_endpoint(
             # over the run) — how much the egress crush overlaps historically dangerous KSI
             # places. Display-only, no dollars, no lever, never a headline number.
             "road_risk": _road_risk_report(extra, current),
+            # Footfall advisory (Fit C, ADR-0037): the crush-footfall-overlap signal (peak/mean)
+            # — how much the egress crush coincides with already-busy pedestrian areas.
+            "footfall": _footfall_report(extra, current),
+            # RoadDisruption advisory (Fit C, ADR-0038): the crush-disruption-exposure signal
+            # (peak/mean) — how much the egress crush overlaps actively restricted places.
+            "road_disruption": _road_disruption_report(extra, current),
             "benefit_definitions": BENEFIT_DEFINITIONS,
         }
     )
@@ -438,13 +448,20 @@ def overlays_endpoint() -> dict:
     # Road RISK: severity-weighted Vision Zero / KSI collision history fused per node (ADR-0036)
     # — where the road is historically dangerous. Static + advisory; synthetic fallback offline.
     roadrisk = _road_risk_overlay(extra, sub.n)
+    # Footfall: peak-over-time ambient TMC pedestrian volume fused per node (ADR-0037) — where
+    # people already are on foot. Advisory; synthetic fallback offline.
+    footfall = _footfall_overlay(extra, sub.n)
+    # Road DISRUPTION: severity-weighted active road closures/restrictions fused per node (ADR-0038)
+    # — where the network is currently constrained. Static + advisory; synthetic fallback offline.
+    roaddis = _road_disruption_overlay(extra, sub.n)
 
     def _norm(a):
         m = float(a.max())
         return a / m if m > 0 else a
 
-    ems_n, resid_n, emit_n, bike_n, supply_n, roadrisk_n = (
-        _norm(ems), _norm(resid), _norm(emit), _norm(bike), _norm(supply), _norm(roadrisk)
+    ems_n, resid_n, emit_n, bike_n, supply_n, roadrisk_n, footfall_n, roaddis_n = (
+        _norm(ems), _norm(resid), _norm(emit), _norm(bike), _norm(supply), _norm(roadrisk),
+        _norm(footfall), _norm(roaddis),
     )
     nodes = [
         {
@@ -457,6 +474,8 @@ def overlays_endpoint() -> dict:
             "bike_demand": _r(float(bike_n[i]), 3),
             "transit_supply": _r(float(supply_n[i]), 3),
             "road_risk": _r(float(roadrisk_n[i]), 3),
+            "footfall": _r(float(footfall_n[i]), 3),
+            "road_disruption": _r(float(roaddis_n[i]), 3),
         }
         for i in range(sub.n)
     ]

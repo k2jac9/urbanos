@@ -740,3 +740,96 @@ def road_risk_by_node(
     except Exception as exc:
         _log.warning("road-risk fusion failed, using synthetic fallback: %s", exc)
         return _synthetic_road_risk_by_node(substrate)
+
+
+def footfall_by_node(
+    substrate, *, radius_deg: float = 0.0045, provider=None
+) -> dict[str, dict[float, float]]:
+    """Per-node ambient PEDESTRIAN footfall series — TMC ped counts ("how many people are
+    on foot near here") per 15-min bin, lifted onto the substrate by proximity,
+    ``{node_id: {minute: count}}`` (a thin wrapper over :func:`observed_counts_by_node` with
+    ``mode="ped"``, so it reuses the committed TMC pedestrian slice). Falls back to a
+    deterministic synthetic series when no count slice is present, so the Footfall display
+    lens still runs offline (ADR-0037)."""
+    return observed_counts_by_node(
+        substrate, mode="ped", radius_deg=radius_deg, provider=provider
+    )
+
+
+# --- road-DISRUPTION overlay (real active road closures / restrictions) ----------------
+# Where RoadRisk shows where the road is HISTORICALLY dangerous (KSI collisions), this shows
+# where the network is CURRENTLY constrained: severity-weighted active Road Restriction records
+# (lane/full closures, construction) fused onto the substrate as a static per-node disruption
+# density (scripts/fetch_road_restrictions.py). A display overlay (ADR-0038) — no lever, no J,
+# never a headline number. Real/measured (a count of real geocoded restrictions, weighted by
+# road class; the relative shape is the claim).
+
+ROAD_DISRUPTION_PROVENANCE = "real/measured"
+_ROAD_DISRUPTION_CACHE: list | None = None
+
+
+def reset_road_disruption_cache() -> None:
+    """Clear the cached road-restriction records (parity with the other ingest caches)."""
+    global _ROAD_DISRUPTION_CACHE
+    _ROAD_DISRUPTION_CACHE = None
+
+
+def _default_road_disruption() -> list:
+    """Default provider: the committed real Road Restrictions slice via the static-value loader
+    (``key="road_restrictions"``, severity as the value), read ONCE and cached. Empty when no
+    slice is on the loader's path → callers fall back to a synthetic field."""
+    global _ROAD_DISRUPTION_CACHE
+    if _ROAD_DISRUPTION_CACHE is None:
+        from urbanos.risk.ingest import timeseries
+
+        _ROAD_DISRUPTION_CACHE = timeseries.load_station_values(
+            key="road_restrictions", value_col="severity"
+        )
+    return _ROAD_DISRUPTION_CACHE
+
+
+def _synthetic_road_disruption_by_node(substrate) -> dict[str, float]:
+    """Deterministic placeholder road-disruption density (no real data needed): busier, more
+    central intersections (higher capacity) carry more active restrictions. Keeps the overlay
+    running offline; clearly synthetic, normalised 0..1."""
+    import numpy as np
+
+    cap = substrate.capacity.astype(float)
+    base = np.where(~substrate.is_sink, np.sqrt(np.maximum(cap, 0.0)), 0.0)
+    peak = float(base.max()) or 1.0
+    return {nid: float(base[i] / peak) for i, nid in enumerate(substrate.ids)}
+
+
+def road_disruption_by_node(
+    substrate, *, radius_deg: float = 0.0045, provider=None
+) -> dict[str, float]:
+    """Per-node road-disruption density — severity-weighted active road-restriction records
+    lifted onto the substrate by a Gaussian proximity-weighted SUM (``{node_id: density}``), a
+    static overlay. A SUM (not an average) because disruption is cumulative: more severe
+    restrictions nearby ⇒ more constrained. Returns raw non-negative values (the lens/caller
+    normalises 0..1). Falls back to a deterministic synthetic field when no slice is present
+    (offline-safe, ADR-0038)."""
+    import numpy as np
+
+    try:
+        recs = (provider or _default_road_disruption)()
+        recs = [r for r in recs if r.get("lat") is not None and r.get("lng") is not None]
+        if not recs:
+            raise RuntimeError("no road-restriction records loaded")
+        rl = np.array([r["lat"] for r in recs], dtype=float)
+        ro = np.array([r["lng"] for r in recs], dtype=float)
+        rv = np.array([float(r["value"]) for r in recs], dtype=float)
+        out: dict[str, float] = {}
+        for i, nid in enumerate(substrate.ids):
+            if substrate.is_sink[i]:
+                out[nid] = 0.0   # sinks are abstract exit lines, not real road locations
+                continue
+            la, lo = float(substrate.lat[i]), float(substrate.lng[i])
+            dlat = rl - la
+            dlng = (ro - lo) * np.cos(np.radians(la))
+            w = np.exp(-(dlat * dlat + dlng * dlng) / (radius_deg * radius_deg))
+            out[nid] = float(np.sum(w * rv))
+        return out
+    except Exception as exc:
+        _log.warning("road-disruption fusion failed, using synthetic fallback: %s", exc)
+        return _synthetic_road_disruption_by_node(substrate)

@@ -16,7 +16,9 @@ from .adapters import (
     bikeshare_demand_by_node,
     civic_activity_by_node,
     civic_safety_by_node,
+    footfall_by_node,
     observed_counts_by_node,
+    road_disruption_by_node,
     road_risk_by_node,
     ttc_boardings_by_node,
 )
@@ -28,8 +30,10 @@ from .lenses import (
     EmsAccessLens,
     EventSurge,
     FareRevenueLens,
+    FootfallLens,
     MobilityDemandLens,
     NoiseLivabilityLens,
+    RoadDisruptionLens,
     RoadRiskLens,
     SafetyLens,
     TransitLoadLens,
@@ -139,15 +143,27 @@ def extra_display_lenses(sc=None) -> list:
     static ``road_risk`` overlay and reports how much the egress crush overlaps historically
     dangerous places — read-only on the crowd fields, no lever, no cost — advisory-only,
     excluded from ``J``.
+
+    ``FootfallLens`` (Fit C, ADR-0037) lifts ambient TMC *pedestrian* volume onto the substrate
+    via ``adapters.footfall_by_node`` (a thin wrapper over ``observed_counts_by_node(mode="ped")``
+    — reuses the committed TMC slice). ``RoadDisruptionLens`` (Fit C, ADR-0038) lifts active road
+    closures / restrictions via ``adapters.road_disruption_by_node`` (synthetic fallback offline).
+    Both write only their own overlay (``footfall`` / ``road_disruption``), report a crush-overlap
+    metric, declare no lever and no cost — advisory-only, excluded from ``J``.
     """
     if sc is not None:
         noise = NoiseLivabilityLens(civic_activity_by_node(sc.substrate))
         nowcast = CongestionNowcastLens(observed_counts_by_node(sc.substrate))
         mobility = MobilityDemandLens(bikeshare_demand_by_node(sc.substrate))
         road_risk = RoadRiskLens(road_risk_by_node(sc.substrate))
+        footfall = FootfallLens(footfall_by_node(sc.substrate))
+        road_disruption = RoadDisruptionLens(road_disruption_by_node(sc.substrate))
     else:
         noise = NoiseLivabilityLens()
         nowcast = CongestionNowcastLens()
         mobility = MobilityDemandLens()
         road_risk = RoadRiskLens()
-    return [EmsAccessLens(), EmissionsLens(), noise, FareRevenueLens(), nowcast, mobility, road_risk]
+        footfall = FootfallLens()
+        road_disruption = RoadDisruptionLens()
+    return [EmsAccessLens(), EmissionsLens(), noise, FareRevenueLens(), nowcast, mobility,
+            road_risk, footfall, road_disruption]

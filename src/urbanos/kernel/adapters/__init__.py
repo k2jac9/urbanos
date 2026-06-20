@@ -16,9 +16,12 @@ from .toronto import (
     observed_counts_by_node,
     reset_bikeshare_demand_cache,
     reset_observed_counts_cache,
+    footfall_by_node,
+    reset_road_disruption_cache,
     reset_road_risk_cache,
     reset_transit_supply_cache,
     reset_ttc_boardings_cache,
+    road_disruption_by_node,
     road_risk_by_node,
     transit_supply_by_node,
     ttc_boardings_by_node,
@@ -43,4 +46,9 @@ __all__ = [
     # Road risk (real Vision Zero / KSI collisions) — a display overlay (ADR-0036).
     "road_risk_by_node",
     "reset_road_risk_cache",
+    # Ambient pedestrian footfall (TMC ped counts, mode="ped") — the Footfall display lens (ADR-0037).
+    "footfall_by_node",
+    # Road disruption (real active road closures / restrictions) — a display overlay (ADR-0038).
+    "road_disruption_by_node",
+    "reset_road_disruption_cache",
 ]

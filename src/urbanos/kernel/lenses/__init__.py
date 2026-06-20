@@ -27,7 +27,9 @@ from .ems_access import EmsAccessLens
 from .event_surge import EventSurge
 from .fare_revenue import FareRevenueLens
 from .mobility_demand import MobilityDemandLens
+from .footfall import FootfallLens
 from .noise_livability import NoiseLivabilityLens
+from .road_disruption import RoadDisruptionLens
 from .road_risk import RoadRiskLens
 from .safety import SafetyLens
 from .transit_load import TransitLoadLens, transit_load_enabled
@@ -54,6 +56,12 @@ __all__ = [
     # Data-driven ROAD-RISK display lens (advisory-only, no levers, no cost — Fit C of the
     # roadmap, ADR-0036): Vision Zero / KSI collision history as a read-only danger overlay.
     "RoadRiskLens",
+    # Data-driven FOOTFALL display lens (advisory-only, no levers, no cost — Fit C of the
+    # roadmap, ADR-0037): ambient TMC pedestrian volume as a read-only overlay.
+    "FootfallLens",
+    # Data-driven ROAD-DISRUPTION display lens (advisory-only, no levers, no cost — Fit C of the
+    # roadmap, ADR-0038): active road closures / restrictions as a read-only disruption overlay.
+    "RoadDisruptionLens",
     # Data-driven REAL source lens (opt-in, off by default, no levers, no cost — Fit C
     # of the roadmap, ADR-0029): measured TTC/TMC background ridership injected as load.
     "TransitLoadLens",

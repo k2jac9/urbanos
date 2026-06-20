@@ -234,6 +234,81 @@ def road_risk_report(lenses, result) -> dict:
     }
 
 
+def footfall_overlay(lenses, n: int) -> np.ndarray:
+    """Peak-over-time ambient pedestrian footfall per node, for the map overlay.
+
+    ``FootfallLens`` (Fit C, ADR-0037) writes a time-varying advisory ``footfall`` field each
+    step; for a *static* map heat layer we want one value per node — "where footfall is highest"
+    — so we take the element-wise max over every footfall bin the lens baked during ``configure``.
+    Returns a raw, non-negative ``(n,)`` array; the caller normalises it 0..1. Display-only and
+    advisory: prices nothing, so it cannot move ``J``. All-zeros when the lens is absent/inert."""
+    peak = np.zeros(int(n), dtype=float)
+    lens = next((ln for ln in lenses if ln.name == "footfall"), None)
+    if lens is None:
+        return peak
+    for arr in getattr(lens, "_footfall", {}).values():
+        a = np.asarray(arr, dtype=float)
+        if a.shape == peak.shape:
+            peak = np.maximum(peak, np.maximum(0.0, a))
+    np.nan_to_num(peak, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+    return peak
+
+
+def footfall_report(lenses, result) -> dict:
+    """Run-level Footfall advisory figures (Fit C, ADR-0037) off the SAME finished sim — no extra
+    run, no lever, no ``J`` contribution, so it can't move a headline number.
+
+    Reports the ``crush_footfall_overlap`` signal the lens emits each step (a scale-free cosine in
+    ``[0, 1]`` measuring how much the egress crush coincides with already-busy pedestrian areas),
+    as its peak and mean over the steps it was active. ``available: False`` when absent/inert."""
+    lens = next((ln for ln in lenses if ln.name == "footfall"), None)
+    overlap = [float(v) for v in result.series("crush_footfall_overlap")]
+    if lens is None or not overlap:
+        return {"available": False, "peak_overlap": 0.0, "mean_overlap": 0.0}
+    return {
+        "available": True,
+        "peak_overlap": _r(max(overlap), 3),
+        "mean_overlap": _r(sum(overlap) / len(overlap), 3),
+    }
+
+
+def road_disruption_overlay(lenses, n: int) -> np.ndarray:
+    """Per-node road-disruption density for the map overlay, read off the ``RoadDisruptionLens``
+    (Fit C, ADR-0038). The lens bakes a single STATIC, already-normalised ``(N,)`` disruption
+    field during ``configure`` (severity-weighted active road-restriction records fused onto the
+    substrate), so this just returns it. Display-only and advisory: prices nothing, so it cannot
+    move ``J``. Returns all-zeros when the lens is absent or inert — never an error."""
+    out = np.zeros(int(n), dtype=float)
+    lens = next((ln for ln in lenses if ln.name == "road_disruption"), None)
+    risk = getattr(lens, "_risk", None) if lens is not None else None
+    if risk is None:
+        return out
+    a = np.asarray(risk, dtype=float)
+    if a.shape == out.shape:
+        out = np.maximum(0.0, a)
+    np.nan_to_num(out, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+    return out
+
+
+def road_disruption_report(lenses, result) -> dict:
+    """Run-level RoadDisruption advisory figures (Fit C, ADR-0038) off the SAME finished sim — no
+    extra run, no lever, no ``J`` contribution, so it can't move a headline number.
+
+    Reports the ``crush_disruption_exposure`` signal the lens emits each step (a scale-free cosine
+    in ``[0, 1]`` measuring how much the egress crush overlaps the fixed active-restriction field —
+    i.e. how much the crowd is funnelled through actively restricted places), as its peak and mean
+    over the steps it was active. ``available: False`` when absent/inert."""
+    lens = next((ln for ln in lenses if ln.name == "road_disruption"), None)
+    exposure = [float(v) for v in result.series("crush_disruption_exposure")]
+    if lens is None or not exposure:
+        return {"available": False, "peak_exposure": 0.0, "mean_exposure": 0.0}
+    return {
+        "available": True,
+        "peak_exposure": _r(max(exposure), 3),
+        "mean_exposure": _r(sum(exposure) / len(exposure), 3),
+    }
+
+
 def four_lens_stack(sc):
     """The full four-lens stack (transit + economic + civic safety + business)."""
     return default_lens_stack(sc, safety=True, business=True)

@@ -460,7 +460,7 @@
   // with lens show/hide and adds no new map layers.
   const LAYER_NAMES = { crush:'Live crush', ems_access:'EMS access', residential:'Civic activity',
     emissions:'Idling emissions', bike_demand:'Bike-share demand', transit_supply:'Transit supply',
-    road_risk:'Road risk (KSI)' };
+    road_risk:'Road risk (KSI)', footfall:'Footfall', road_disruption:'Road disruption' };
   async function setOverlay(key) {
     CUR_LAYER = key;
     const box = document.getElementById('maplayers');
@@ -792,7 +792,9 @@
              ['Context',[['ems_access','EMS','EMS-access criticality per node'],
                          ['residential','Activity','Civic activity — building permits + business licences'],
                          ['emissions','Emissions','Idling-emissions hotspot (do-nothing baseline)'],
-                         ['road_risk','Road risk','Vision Zero / KSI collision history — where the road is historically dangerous (real, advisory)']]],
+                         ['road_risk','Road risk','Vision Zero / KSI collision history — where the road is historically dangerous (real, advisory)'],
+                         ['footfall','Footfall','Ambient TMC pedestrian volume — where people already are on foot (advisory)'],
+                         ['road_disruption','Disruption','Active road closures / restrictions — where the network is currently constrained (real, advisory)']]],
              ['Demand',[['bike_demand','Bike','Bike Share trip-origin demand — where people want to leave (advisory)']]],
              ['Supply',[['transit_supply','Transit','Scheduled evening transit departures near each node — real GTFS (advisory)']]]]
               .map(([g,btns])=>'<span class="mlg"><span class="mlg-l">'+g+'</span><span class="mlg-btns">'+
@@ -1117,6 +1119,38 @@
     '</div>';
   }
 
+  // Footfall advisory (Fit C, ADR-0037): how much the egress crush coincides with already-busy
+  // pedestrian areas (ambient TMC ped volume). Reuses the .learned advisory card. '' when
+  // unavailable (inert/no slice). Display-only — prices nothing, never a headline.
+  function footfallHTML(ff) {
+    if (!ff || !ff.available) return '';
+    const f3 = (x) => Number(x || 0).toFixed(3);
+    return '<div class="learned">'+
+      '<div class="k">Pedestrian footfall<span class="prov">footfall · advisory</span></div>'+
+      '<div class="fits">'+
+        '<div class="fit"><div class="lbl">Peak overlap</div><div class="num">'+f3(ff.peak_overlap)+'</div></div>'+
+        '<div class="fit"><div class="lbl">Mean overlap</div><div class="num">'+f3(ff.mean_overlap)+'</div></div>'+
+      '</div>'+
+      '<p class="hint">Overlap (cosine, 0–1) of the egress crush with already-busy pedestrian areas (ambient TMC ped volume). Advisory only; prices nothing.</p>'+
+    '</div>';
+  }
+
+  // RoadDisruption advisory (Fit C, ADR-0038): how much the egress crush overlaps the fixed
+  // active-restriction field — whether the lever funnels the crowd through actively closed
+  // streets. Reuses the .learned advisory card. '' when unavailable. Display-only — never a headline.
+  function roadDisruptionHTML(rd) {
+    if (!rd || !rd.available) return '';
+    const f3 = (x) => Number(x || 0).toFixed(3);
+    return '<div class="learned">'+
+      '<div class="k">Road disruption<span class="prov">closures · advisory</span></div>'+
+      '<div class="fits">'+
+        '<div class="fit"><div class="lbl">Peak exposure</div><div class="num">'+f3(rd.peak_exposure)+'</div></div>'+
+        '<div class="fit"><div class="lbl">Mean exposure</div><div class="num">'+f3(rd.mean_exposure)+'</div></div>'+
+      '</div>'+
+      '<p class="hint">Overlap (cosine, 0–1) of the egress crush with actively restricted streets — lower is safer. Advisory only; prices nothing.</p>'+
+    '</div>';
+  }
+
   async function runOptimize(e) {
     const btn = e ? e.target : null;
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Searching levers…'; }
@@ -1166,7 +1200,9 @@
         // labelled, displayed apart from kernel-exact numbers, never a headline.
         learnedDynamicsHTML(l && l.learned_dynamics) +
         mobilityDemandHTML(l && l.mobility_demand) +
-        roadRiskHTML(l && l.road_risk);
+        roadRiskHTML(l && l.road_risk) +
+        footfallHTML(l && l.footfall) +
+        roadDisruptionHTML(l && l.road_disruption);
       if (out) out.innerHTML = card;
       // Animate the City meters to the optimum (same /lenses source as the ripple).
       if (l && document.getElementById('combined')) {

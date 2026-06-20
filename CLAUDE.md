@@ -94,6 +94,21 @@ Layout: `src/civic_analyst/{ingest,graph,agents,api}`, `src/urban_os/`, `tests/`
 > property/edge tests (#99). **Suite: 584 passed / 1 skipped.** All honesty invariants intact;
 > the original deployment (below) remains live.
 
+> **UrbanOS platform-unification + UX redesign (2026-06-20, ADR-0033).** The two apps are now
+> **one product**: a single CI-gated UrbanOS shell (`urban_os.api:app` at `/`) with a lens rail
+> (City · Risk · Flow · Economy) over one map; the civic risk app is the **Risk lens**, mounted
+> same-origin at `/civic`. Shipped (all merged + CI-green): **#112** rebrand + ADR-0033 · **#113**
+> unified shell (Safety→Risk display rename; `make demo` serves the one app) · **#114** identity v1
+> (wordmark + lens rail) · **#115** **Identity v2** (signature **azure→iris** brand palette in
+> `tokens.css` — `--brand-1/-2/-grad/-glow`, `--accent` re-anchored to azure; gradient wordmark +
+> bolder boot/hero) · **#116** **civic fold** (map.html fetches made mount-relative so `/civic/`
+> works under the shell — was 404-ing — plus bidirectional nav: "‹ UrbanOS" ↔ "Open the full Risk
+> view ↗") · **#111** map-heat grouping + legend · **#117** the **City lens** now shows the
+> optimizer's grounded insight + before/after (was Flow-only). **Visual/integration only — golden
+> numbers, the offline map, and the hallucination guard are unchanged; Suite still 584 green / 1
+> skipped.** Python packages stay `urban_os`/`civic_analyst` for now; the source-package + local
+> folder rename to UrbanOS are **deliberately deferred** (their own future step, not started).
+
 **Context & origin docs:** `docs/ON_THE_BOX.md` (box runbook, operational), `docs/HANDOFF.md`,
 `docs/PITCH.md`, `docs/video/` — the last three are **origin/hackathon artifacts**, kept as
 honest history (not maintained as current product docs). A fresh clone builds + passes all

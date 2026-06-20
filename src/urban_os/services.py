@@ -170,6 +170,29 @@ def learned_dynamics_report(lenses, result) -> dict:
     return learned_dynamics_evaluate(node_counts, result).as_dict()
 
 
+def mobility_demand_report(lenses, result) -> dict:
+    """Run-level MobilityDemand advisory figures (Fit C, ADR-0030) off the SAME finished sim
+    — no extra run, no lever, no ``J`` contribution, so it can't move a headline number.
+
+    Reports the ``micromobility_relief`` signal the lens emits each step (a scale-free cosine
+    in ``[0, 1]`` measuring how much the egress crush coincides with high bike-share demand —
+    a *relief opportunity*), as its peak and mean over the steps it was active. ``available:
+    False`` when the lens is absent or never emitted (e.g. inert / no slice), so the UI can
+    say "not evaluated" rather than show a misleading 0.0. No data-provenance string is
+    surfaced: the underlying Bike Share demand is real under the demo (DATA_DIR=demo_data) but
+    synthetic in CI/dev, and that distinction isn't known here — so the figure is simply marked
+    *advisory* rather than risk a wrong real/synthetic claim once shown in the UI."""
+    lens = next((ln for ln in lenses if ln.name == "mobility_demand"), None)
+    relief = [float(v) for v in result.series("micromobility_relief")]
+    if lens is None or not relief:
+        return {"available": False, "peak_relief": 0.0, "mean_relief": 0.0}
+    return {
+        "available": True,
+        "peak_relief": _r(max(relief), 3),
+        "mean_relief": _r(sum(relief) / len(relief), 3),
+    }
+
+
 def four_lens_stack(sc):
     """The full four-lens stack (transit + economic + civic safety + business)."""
     return default_lens_stack(sc, safety=True, business=True)

@@ -54,6 +54,7 @@ from urban_os.services import (
     four_lens_stack as _four_lens_stack,
     learned_dynamics_report as _learned_dynamics_report,
     mobility_demand_overlay as _mobility_demand_overlay,
+    mobility_demand_report as _mobility_demand_report,
     transit_supply_overlay as _transit_supply_overlay,
 )
 
@@ -382,6 +383,10 @@ def lenses_endpoint(
             # field beats the exact kernel at matching the observed counts — labelled
             # learned/approximate, no dollars, no lever, never moves a headline number.
             "learned_dynamics": _learned_dynamics_report(extra, current),
+            # MobilityDemand advisory (Fit C, ADR-0030): the micromobility-relief signal
+            # (peak/mean over the run) — how much the egress crush coincides with high
+            # bike-share demand. Display-only, no dollars, no lever, never a headline number.
+            "mobility_demand": _mobility_demand_report(extra, current),
             "benefit_definitions": BENEFIT_DEFINITIONS,
         }
     )

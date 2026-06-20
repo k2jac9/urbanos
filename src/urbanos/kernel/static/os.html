@@ -73,6 +73,17 @@
       box-shadow: var(--shadow-3); }
     #panel.swap { animation: swap .28s ease; }
     @keyframes swap { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+    /* The Risk lens embeds the full civic analyst full-bleed. z-index 5 keeps it BELOW the
+       dock + topbar (z 6/5) so the lens rail and help stay clickable; top:52px clears the
+       topbar, left:108px clears the dock. Created/removed by the safety lens / setLens. */
+    /* Explicit calc() size: an <iframe> is a replaced element, so width/height:auto would
+       resolve to its intrinsic 300×150 default — insets alone don't stretch it. */
+    #civ-embed { position: fixed; top: 52px; left: 108px; width: calc(100% - 108px);
+      height: calc(100% - 52px); border: 0; z-index: 5; background: var(--map-bg); }
+    /* While the embed is up, hide the shell's condensed panel (z 6 would otherwise float
+       over the iframe). The panel markup still ships in the JS source (test markers); the
+       embedded civic app provides the real Risk panel. */
+    body.risk-embed #panel { display: none; }
     /* .ptitle is an <h2> (per-lens section heading); the class keeps its visual size. */
     .ptitle { font-size: 18px; font-weight: 800; margin: 0 0 2px; color: var(--text-strong); }
     .psub { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
@@ -848,13 +859,20 @@
             '<button class="gh" id="hot-btn" aria-pressed="false">◉ Risk hotspots</button></div>'+
           '<div id="hotbox"></div>'+
           '<h3 class="panel-h">Highest-risk addresses<span class="hint" style="text-transform:none;font-weight:400"> · ranked by most-elevated index</span></h3><ul id="addrlist">'+rows+'</ul>'+
-          '<div id="detail"><p class="hint">Pick a pin or address for its grounded risk read.</p></div>'+
-          // Drill-down to the full civic Risk view (same product, /civic/) — its
-          // free-text search, city briefing & 3D presentation aren't in this panel.
-          '<p class="hint" style="margin-top:14px">'+
-            '<a href="/civic/" style="color:var(--accent-link);font-weight:700;text-decoration:none">Open the full Risk view ↗</a>'+
-            ' — address search, city briefing &amp; 3D presentation</p>'
+          '<div id="detail"><p class="hint">Pick a pin or address for its grounded risk read.</p></div>'
         );
+        // The condensed panel above is kept as markup (a11y/test markers + a fallback if
+        // the embed fails) but is covered by the full civic analyst: the Risk lens embeds
+        // the real /civic/ app full-bleed (briefing + Presentation 3D + analyze/verify),
+        // so there's no subset. Same-origin relative src (stays offline-safe); appended to
+        // <body> (not #panel) so paint() can't clobber it; lazily created once.
+        if (!document.getElementById('civ-embed')) {
+          const f = document.createElement('iframe');
+          f.id = 'civ-embed'; f.src = '/civic/?embed=1';
+          f.title = 'Risk lens — full civic analyst';
+          document.body.appendChild(f);
+        }
+        document.body.classList.add('risk-embed');   // hides #panel under the iframe; torn down in setLens
         panel.querySelector('#addrlist').addEventListener('click', e => { const b = e.target.closest('button[data-label]'); if (b) analyzeAddress(b.dataset.label); });
         panel.querySelectorAll('.gh[data-label]').forEach(b => b.addEventListener('click', () => analyzeAddress(b.dataset.label)));
         const hb = document.getElementById('hot-btn'); if (hb) hb.addEventListener('click', () => toggleHotspots(hb));
@@ -974,6 +992,18 @@
   function setLens(id) {
     if (LENS === id) return;
     LENS = id;
+    // Tear down the Risk-lens civic embed at this single chokepoint (covers click /
+    // keyboard / postMessage switch paths), so only one map/WebGL context is ever live
+    // and the panel's aria-live is restored before the next lens enters.
+    const emb = document.getElementById('civ-embed');
+    if (emb) {
+      emb.remove();
+      // Focus was inside the (now-removed) iframe — move it to the incoming lens's dock
+      // button so keyboard / screen-reader users aren't dropped to <body>.
+      const btn = document.querySelector('.lens[data-lens="' + id + '"]');
+      if (btn) try { btn.focus(); } catch (_) {}
+    }
+    document.body.classList.remove('risk-embed');
     // ADR-0026 Phase 2: cluster overlay belongs to the Safety lens — clear it on any
     // switch so hotspot circles never linger on the City/Flow map.
     HOTSPOTS_ON = false; vis('civ-clusters', false); vis('civ-clusters-lbl', false);
@@ -1206,6 +1236,14 @@
     if (helpDlg.open) return;
     const id = LENS_KEYS[e.key];
     if (id && LENSES[id]) { setLens(id); e.preventDefault(); }
+  });
+  // Keyboard bridge from the embedded Risk-lens iframe: parent-window keys don't fire while
+  // focus is inside the iframe, so the embedded /civic/ page postMessages 1–4 / Escape here.
+  // Strict same-origin check (message-injection guard).
+  addEventListener('message', e => {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === 'os-lens' && LENS_KEYS[e.data.key]) setLens(LENS_KEYS[e.data.key]);
+    else if (e.data.type === 'os-exit-risk') setLens('city');
   });
 
   async function boot() {

@@ -240,6 +240,26 @@
     maplibregl.addProtocol('pmtiles', protocol.tile);
     const PMTILES = `pmtiles://${location.origin}/static/toronto.pmtiles`;
 
+    // Embedded mode: this page runs full-bleed inside the UrbanOS shell's Risk lens
+    // (<iframe src="/civic/?embed=1">). Hide the home link (the shell's lens rail is the
+    // way back; a homelink here would nest the shell in itself), and bridge keyboard
+    // lens-switching to the parent (1–4 + Escape) since parent-window keys don't fire
+    // while focus is inside the iframe. Same-origin → postMessage to location.origin only.
+    const EMBED = new URLSearchParams(location.search).has('embed');
+    if (EMBED) {
+      document.querySelector('.homelink')?.setAttribute('hidden', '');
+      addEventListener('keydown', (e) => {
+        const t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        if (['1', '2', '3', '4'].includes(e.key)) window.parent.postMessage({ type: 'os-lens', key: e.key }, location.origin);
+        else if (e.key === 'Escape') window.parent.postMessage({ type: 'os-exit-risk' }, location.origin);
+      });
+    }
+    // Reduced motion: CSS guards don't collapse MapLibre JS camera animations, so gate
+    // the Presentation fly/pitch moves on the OS setting (applies embedded + standalone).
+    const RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; } })();
+
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     // Risk band: a non-color cue (shape + word) so risk isn't conveyed by color alone.
@@ -511,7 +531,7 @@
                      'fill-extrusion-opacity': 0.85 } }, 'risk-pins');
         } catch (e) { /* basemap may lack a buildings layer */ }
       }
-      map.easeTo({ pitch: 55, bearing: -18, duration: 900 });
+      map.easeTo({ pitch: RM ? 0 : 55, bearing: RM ? 0 : -18, duration: RM ? 0 : 900 });
     }
     function exit3D() {
       clearFocus();
@@ -562,7 +582,7 @@
       // its info card — the band-coloured pin dot already marks the spot.
       clearFocus();
       showBoard(row, d);
-      map.flyTo({ center: [row.lng, row.lat], zoom: 17.3, pitch: 64, bearing: -22, duration: 1200 });
+      map.flyTo({ center: [row.lng, row.lat], zoom: 17.3, pitch: RM ? 0 : 64, bearing: RM ? 0 : -22, duration: RM ? 0 : 1200 });
     }
     function setPresentation(on) {
       PRES = on;

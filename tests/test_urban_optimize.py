@@ -4,10 +4,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from urban_os.adapters import downtown_scenario
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge, WeatherLens
-from urban_os.optimize import cost_breakdown, objective, optimize
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge, WeatherLens
+from urbanos.kernel.optimize import cost_breakdown, objective, optimize
 
 
 def _lenses(sc):

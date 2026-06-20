@@ -6,9 +6,9 @@ other lenses), and determinism.
 """
 import numpy as np
 
-from urban_os.adapters import downtown_scenario
-from urban_os.kernel import Simulation
-from urban_os.lenses import BusinessFlow, EconomicLens, EventSurge
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import BusinessFlow, EconomicLens, EventSurge
 
 
 def _stack(sc, business):

@@ -9,8 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from urban_os.kernel import accel
-from urban_os.adapters import downtown_scenario
+from urbanos.kernel.kernel import accel
+from urbanos.kernel.adapters import downtown_scenario
 
 
 def _independent_transport_step(load, edge_src, edge_dst, edge_cap, dist_to_sink, is_sink, dt):
@@ -80,7 +80,7 @@ def test_import_never_raises_and_backend_name():
     # Re-import is a no-op but documents intent; the module already imported above.
     import importlib
 
-    importlib.import_module("urban_os.kernel.accel")
+    importlib.import_module("urbanos.kernel.kernel.accel")
     assert accel.backend_name() in {"rust", "numpy"}
     assert accel.BACKEND == accel.backend_name()
 
@@ -113,8 +113,8 @@ def test_numpy_matches_independent_reimpl(substrate, arrays):
 
 def test_matches_kernel_operator(substrate):
     """accel's numpy path must equal the kernel's in-place operators.transport."""
-    from urban_os.kernel.state import State
-    from urban_os.kernel.operators import Operators
+    from urbanos.kernel.kernel.state import State
+    from urbanos.kernel.kernel.operators import Operators
 
     st = State(substrate)
     load0 = _seeded_load(substrate.n, seed=7)

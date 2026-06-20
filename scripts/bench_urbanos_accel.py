@@ -30,9 +30,9 @@ from dataclasses import dataclass
 import numpy as np
 
 # Import via the package so this works from a checkout with PYTHONPATH=src.
-from urban_os.adapters.toronto import downtown_substrate
-from urban_os.kernel import accel
-from urban_os.kernel.accel import _transport_step_numpy, transport_step
+from urbanos.kernel.adapters.toronto import downtown_substrate
+from urbanos.kernel.kernel import accel
+from urbanos.kernel.kernel.accel import _transport_step_numpy, transport_step
 
 # Parity tolerances for f64. Both backends run the identical algorithm in f64,
 # so agreement should be at round-off; we allow a little slack for the

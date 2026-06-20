@@ -7,9 +7,9 @@ No data, no model, no network — deterministic.
 """
 from __future__ import annotations
 
-from urban_os.adapters import downtown_scenario
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge
 
 
 def _run(release_minutes: float):

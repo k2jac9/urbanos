@@ -12,10 +12,10 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from urban_os.kernel import Simulation, Substrate
-from urban_os.kernel.operators import Lens, Lever
-from urban_os.lenses import EconomicLens, WeatherLens
-from urban_os.lenses.weather import (
+from urbanos.kernel.kernel import Simulation, Substrate
+from urbanos.kernel.kernel.operators import Lens, Lever
+from urbanos.kernel.lenses import EconomicLens, WeatherLens
+from urbanos.kernel.lenses.weather import (
     _MAX_CAP_PENALTY,
     _MAX_RISK_BONUS,
     _SHELTER_COST,
@@ -121,7 +121,7 @@ def test_rain_slows_drainage() -> None:
 def test_cap_penalty_magnitude_is_exact() -> None:
     """source() scales the per-step multiplier to exactly (1 − _MAX_CAP_PENALTY·wetness),
     leaving the baked substrate.edge_cap untouched (ADR-0021)."""
-    from urban_os.kernel.state import State
+    from urbanos.kernel.kernel.state import State
 
     sub = _line_graph()
     dry = sub.edge_cap.copy()
@@ -189,7 +189,7 @@ def test_risk_multiplier_magnitude_is_exact() -> None:
     isolates the multiplier from the drainage tax (which would otherwise change
     the underlying load/risk between runs).
     """
-    from urban_os.kernel.state import State
+    from urbanos.kernel.kernel.state import State
 
     sub = _line_graph()
     rain = WeatherLens(peak_time=2.0, intensity=1.0, width=50.0, crowd_size=800.0)
@@ -325,7 +325,7 @@ def test_configure_missing_is_handled_gracefully() -> None:
     rain = WeatherLens(peak_time=0.0, intensity=1.0, width=10.0)
     state_caps = sub.edge_cap.copy()
     # Drive source/couple manually without configure().
-    from urban_os.kernel.state import State
+    from urbanos.kernel.kernel.state import State
 
     st = State(sub, {"dt": 1.0})
     rain.source(st, 0.0)
@@ -352,8 +352,8 @@ def test_runs_without_economic_lens() -> None:
 
 def test_three_lens_stack_end_to_end() -> None:
     """EventSurge + Economic + Weather compose on the real downtown substrate."""
-    from urban_os.adapters.toronto import downtown_scenario
-    from urban_os.lenses import EventSurge
+    from urbanos.kernel.adapters.toronto import downtown_scenario
+    from urbanos.kernel.lenses import EventSurge
 
     sc = downtown_scenario(crowd_size=20000.0)
     rain = WeatherLens(

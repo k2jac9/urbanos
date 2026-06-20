@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/static/vendor/tokens.css" />
   <style>
     /* Design tokens (the :root + html[data-theme="cyber"] token re-pointing) now
-       live in /static/vendor/tokens.css — shared with urban_os + the shell.
+       live in /static/vendor/tokens.css — shared with urbanos.kernel + the shell.
        Below: only this page's component rules + the cyber glow/texture effects. */
     body { margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
     /* Fully offline: vector basemap from a self-hosted PMTiles file (no tile servers). */
@@ -100,7 +100,7 @@
                animation: spin .8s linear infinite; vertical-align: -1px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     /* ADR-0026 Phase 3: dataset-provenance chips (explicit grounding) + a subtle
-       panel-section entrance, unified with the urban_os shell's visual language. */
+       panel-section entrance, unified with the urbanos.kernel shell's visual language. */
     .provchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
     .provchips .pc { font-size: var(--fs-cap); background: var(--surface-sel);
       border: 1px solid var(--border-2); border-radius: var(--pill); padding: 2px 9px; color: var(--text-soft); }
@@ -209,7 +209,7 @@
       inspections) and <b>Activity</b> (open permits). A pin is flagged if <i>either</i>
       axis is elevated.</p>
     <!-- ADR-0026 Phase 3: explicit dataset provenance + the grounding honesty note,
-         matching the urban_os shell so the two surfaces read as one product. -->
+         matching the urbanos.kernel shell so the two surfaces read as one product. -->
     <div class="provchips" aria-label="Fused City of Toronto open datasets">
       <span class="pc">DineSafe</span><span class="pc">Building permits</span><span class="pc">Business licences</span>
     </div>

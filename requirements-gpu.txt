@@ -11,18 +11,18 @@
 # Verify with:  make gpu-check
 --extra-index-url https://pypi.nvidia.com
 
-# GPU backend for networkx (substrate dijkstra bake — src/urban_os/kernel/state.py).
+# GPU backend for networkx (substrate dijkstra bake — src/urbanos/kernel/kernel/state.py).
 nx-cugraph-cu12
 
-# RAPIDS cuDF engine behind Polars' GPU engine (civic ingest — src/civic_analyst/ingest/loader.py).
+# RAPIDS cuDF engine behind Polars' GPU engine (civic ingest — src/urbanos/risk/ingest/loader.py).
 cudf-polars-cu12
 
-# cuOpt LP solver for the optimal evacuation max-flow (URBANOS_GPU_FLOW=1 — src/urban_os/flow.py).
+# cuOpt LP solver for the optimal evacuation max-flow (URBANOS_GPU_FLOW=1 — src/urbanos/kernel/flow.py).
 # NOTE: this is for the FLOW LP, not the lever optimizer — cuOpt cannot evaluate the
 # black-box simulation-in-the-loop search (optimize.py stays grid-search; ADR-0025).
 cuopt-cu12
 
-# cuML GPU KMeans for spatial risk-hotspot clustering (URBANOS_GPU_CLUSTER=1 — src/civic_analyst/cluster.py).
+# cuML GPU KMeans for spatial risk-hotspot clustering (URBANOS_GPU_CLUSTER=1 — src/urbanos/risk/cluster.py).
 cuml-cu12
 
 # --- Inference + physics-ML seams (ADR-0027), box-side, opt-in, CPU/exact fallback ---
@@ -37,6 +37,6 @@ cuml-cu12
 #
 # PhysicsNeMo (formerly Modulus) — trained surrogate of the optimizer objective J(levers)
 # for city-scale search (URBANOS_SURROGATE=1 + URBANOS_SURROGATE_CKPT=<path> —
-# src/urban_os/surrogate.py). SHIPPED AS AN INTERFACE ONLY: no trained checkpoint, so the
+# src/urbanos/kernel/surrogate.py). SHIPPED AS AN INTERFACE ONLY: no trained checkpoint, so the
 # exact kernel remains the reference and decides every result; training is the next step.
 # nvidia-physicsnemo

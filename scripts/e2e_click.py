@@ -3,7 +3,7 @@
 NOT part of the pytest/CI suite (needs Chrome + a running server). Run locally:
 
     pip install playwright
-    DATA_DIR=demo_data uvicorn civic_analyst.api.server:app --port 8022 --app-dir src &
+    DATA_DIR=demo_data uvicorn urbanos.risk.api.server:app --port 8022 --app-dir src &
     python scripts/e2e_click.py http://localhost:8022/
 
 Loads the map page, runs an analysis (equivalent to clicking a pin), then performs a

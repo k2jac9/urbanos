@@ -1,5 +1,5 @@
 /* ===== Urban-OS shared design tokens — one source of truth for color, type,
-   radius, rhythm. Consumed by every page (civic map :8000 + urban_os :8001 +
+   radius, rhythm. Consumed by every page (civic map :8000 + urbanos.kernel :8001 +
    the unified shell) so the suite is visually coherent by construction.
 
    100% offline: NO @import, NO web-font CDN — tokens only. Loaded via

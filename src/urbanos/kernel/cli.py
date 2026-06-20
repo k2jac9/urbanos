@@ -1,8 +1,8 @@
 """Command-line entry point for the Urban-OS demo loop.
 
-    python -m urban_os.cli                 # run + optimize the downtown egress scenario
-    python -m urban_os.cli --release 12    # force a fixed staggered-release, skip search
-    python -m urban_os.cli --json          # machine-readable output
+    python -m urbanos.kernel.cli                 # run + optimize the downtown egress scenario
+    python -m urbanos.kernel.cli --release 12    # force a fixed staggered-release, skip search
+    python -m urbanos.kernel.cli --json          # machine-readable output
 
 Runs the whole pipeline on-device: build substrate → simulate the event surge →
 optimize the intervention → emit the cited killer insight. Deterministic; the
@@ -41,7 +41,7 @@ def _lenses(
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="urban_os")
+    p = argparse.ArgumentParser(prog="urbanos.kernel")
     p.add_argument("--crowd", type=float, default=None, help="event crowd size")
     p.add_argument(
         "--release",
@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--business", action="store_true",
                    help="add the Sports/Business-Flow lens (local trade lost to the crush)")
     p.add_argument("--safety", action="store_true",
-                   help="add the Safety lens (civic_analyst address risk → node field)")
+                   help="add the Safety lens (urbanos.risk address risk → node field)")
     p.add_argument("--transit-load", dest="transit_load", action="store_true",
                    default=transit_load_enabled(),
                    help="add the TransitLoad lens (real measured background ridership as "

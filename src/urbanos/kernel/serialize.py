@@ -3,7 +3,7 @@
 Every numeric payload the API returns is coerced from numpy to native Python here
 — numpy scalars are NOT JSON-serializable and would otherwise leak across the
 boundary — and non-finite floats (NaN/±inf, not legal JSON) are clamped to 0.0.
-Pure functions, no urban_os imports, so this is a safe leaf module.
+Pure functions, no urbanos.kernel imports, so this is a safe leaf module.
 """
 from __future__ import annotations
 

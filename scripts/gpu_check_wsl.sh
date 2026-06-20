@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Re-runnable one-shot that proves the urban_os RAPIDS GPU seams (nx-cugraph for the
+# Re-runnable one-shot that proves the urbanos.kernel RAPIDS GPU seams (nx-cugraph for the
 # graph substrate + cuDF-Polars for ingest) run GENUINELY GPU-active in WSL-native
 # ext4 on a consumer NVIDIA GPU (proven on an RTX 2060). It wraps scripts/gpu_check.py
 # with the two non-obvious fixes that are the whole reason the GPU path lights up:

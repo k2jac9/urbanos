@@ -24,13 +24,13 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from urban_os.adapters import downtown_scenario, observed_counts_by_node
-from urban_os.kernel import Simulation
-from urban_os.kernel.state import State, Substrate
-from urban_os.lenses import EconomicLens, EventSurge, TransitLoadLens, transit_load_enabled
-from urban_os.lenses.transit_load import BIN_MINUTES, PROVENANCE
-from urban_os.optimize import optimize
-from urban_os.scenarios import default_lens_stack
+from urbanos.kernel.adapters import downtown_scenario, observed_counts_by_node
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.kernel.state import State, Substrate
+from urbanos.kernel.lenses import EconomicLens, EventSurge, TransitLoadLens, transit_load_enabled
+from urbanos.kernel.lenses.transit_load import BIN_MINUTES, PROVENANCE
+from urbanos.kernel.optimize import optimize
+from urbanos.kernel.scenarios import default_lens_stack
 
 
 # --- a tiny deterministic substrate for exact-mass assertions ----------------

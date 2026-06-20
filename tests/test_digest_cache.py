@@ -2,8 +2,8 @@
 
 Offline-safe — uses a counting stub LLM, never a real network call.
 """
-import civic_analyst.agents.digest as digest
-from civic_analyst.agents.digest import city_digest, digest_cached
+import urbanos.risk.agents.digest as digest
+from urbanos.risk.agents.digest import city_digest, digest_cached
 
 
 class _CountingLLM:

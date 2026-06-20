@@ -3,13 +3,13 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from civic_analyst.config import settings
-from civic_analyst.graph.builder import normalize_address
+from urbanos.risk.config import settings
+from urbanos.risk.graph.builder import normalize_address
 
 # Point the loader at the fixtures regardless of import order; lifespan reads this.
 settings.data_dir = Path(__file__).resolve().parent.parent / "fixtures"
 
-from civic_analyst.api.server import app  # noqa: E402
+from urbanos.risk.api.server import app  # noqa: E402
 
 
 def _row(addrs: list[dict], address: str) -> dict:

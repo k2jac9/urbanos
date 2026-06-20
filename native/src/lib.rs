@@ -1,6 +1,6 @@
 //! Optional Rust acceleration core for the Urban-OS transport step.
 //!
-//! This is a DROP-IN ACCELERATOR: `src/urban_os/kernel/accel.py` always ships a
+//! This is a DROP-IN ACCELERATOR: `src/urbanos/kernel/kernel/accel.py` always ships a
 //! pure-numpy reference and only routes here when this crate is built and
 //! importable as the Python module `urban_os_native`. The algorithm below is a
 //! line-for-line port of the numpy reference (pure capacitated drainage), kept

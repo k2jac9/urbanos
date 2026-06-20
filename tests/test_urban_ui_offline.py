@@ -20,7 +20,7 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
-from urban_os.api import app
+from urbanos.kernel.api import app
 
 client = TestClient(app)
 

@@ -3,7 +3,7 @@
   "mcpServers": {
     "toronto-civic": {
       "command": "python",
-      "args": ["-m", "civic_analyst.mcp_server"],
+      "args": ["-m", "urbanos.risk.mcp_server"],
       "env": {
         "PYTHONPATH": "./src",
         "DATA_DIR": "./data/raw",

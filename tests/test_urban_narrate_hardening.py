@@ -1,4 +1,4 @@
-"""Hardening + property tests for the urban_os insight narrator's hallucination
+"""Hardening + property tests for the urbanos.kernel insight narrator's hallucination
 guard (Workstream E / ADR 0010).
 
 The single invariant under test: ``build_insight`` never invents a number — every
@@ -14,17 +14,17 @@ import re
 import networkx as nx
 import pytest
 
-from urban_os.adapters import downtown_scenario
-from urban_os.kernel.state import Substrate
-from urban_os.lenses import EconomicLens, EventSurge
-from urban_os.narrate import (
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.kernel.state import Substrate
+from urbanos.kernel.lenses import EconomicLens, EventSurge
+from urbanos.kernel.narrate import (
     _canon,
     _nums,
     _whitelist,
     build_insight,
     is_grounded,
 )
-from urban_os.optimize import optimize
+from urbanos.kernel.optimize import optimize
 
 # --- the same numeric-token extractor the narrator uses, for assertions --------
 _NUM_RE = re.compile(r"\d+(?:\.\d+)?")
@@ -194,7 +194,7 @@ def test_quoted_reply_is_unwrapped_and_grounded() -> None:
 
 def test_year_is_allowed_in_grounded_sentence() -> None:
     """A descriptive year (e.g. 2026) is exempt from the whitelist, mirroring the
-    civic_analyst verifier — it does not flip grounded to False."""
+    urbanos.risk verifier — it does not flip grounded to False."""
     opt, sc = _opt()
     f = build_insight(opt, event_end=sc.event_end, llm=_Boom()).figures
     with_year = (

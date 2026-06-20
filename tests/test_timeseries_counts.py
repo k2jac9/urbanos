@@ -1,13 +1,13 @@
 """Phase 0 — time-marginal count ingest + per-node observed-series fusion.
 
-Covers civic_analyst.ingest.timeseries.load_counts (parse / bbox / hygiene) and the
-urban_os adapter's observed_counts_by_node (proximity fusion + synthetic fallback).
+Covers urbanos.risk.ingest.timeseries.load_counts (parse / bbox / hygiene) and the
+urbanos.kernel adapter's observed_counts_by_node (proximity fusion + synthetic fallback).
 All offline: a tiny in-test slice + injected providers, no network, no committed data.
 """
 from __future__ import annotations
 
-from civic_analyst.ingest import timeseries
-from urban_os.adapters.toronto import downtown_substrate, observed_counts_by_node
+from urbanos.risk.ingest import timeseries
+from urbanos.kernel.adapters.toronto import downtown_substrate, observed_counts_by_node
 
 # A tiny normalized slice (same schema as demo_data/tmc__downtown.csv). Includes a
 # Vancouver row (out of the Toronto bbox) and a blank-time row that must be dropped.

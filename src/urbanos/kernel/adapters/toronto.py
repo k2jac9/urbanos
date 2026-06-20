@@ -221,13 +221,13 @@ def reset_civic_address_cache() -> None:
 
 def _default_civic_addresses() -> list:
     """Default address provider: civic addresses (coords + safety risk), loaded ONCE.
-    civic_analyst's ``load()`` accumulates into a module-global graph, so calling it
+    urbanos.risk's ``load()`` accumulates into a module-global graph, so calling it
     per request drifts the aggregated risk — cache the result so the overlay is
     stable. This is the only place the adapter touches civic internals; callers that
     want isolation can inject their own provider into ``civic_safety_by_node``."""
     global _CIVIC_ADDRS_CACHE
     if _CIVIC_ADDRS_CACHE is None:
-        from civic_analyst import mcp_server as civ
+        from urbanos.risk import mcp_server as civ
 
         civ.load()
         _CIVIC_ADDRS_CACHE = [a for a in civ.top_risk(limit=2000) if a.get("lat") is not None]
@@ -238,7 +238,7 @@ def _civic_field_by_node(
     substrate, *, field: str, radius_deg: float = 0.0045, address_provider=None
 ) -> dict[str, float]:
     """Map each substrate node → the proximity-weighted ``field`` of its surrounding
-    civic addresses (the civic_analyst graph). The shared core behind the safety and
+    civic addresses (the urbanos.risk graph). The shared core behind the safety and
     activity overlays — the **real fusion** of address-level civic data onto kernel
     nodes.
 
@@ -319,13 +319,13 @@ def reset_observed_counts_cache() -> None:
 
 
 def _default_observed_counts() -> list:
-    """Default observed-count provider: the TMC 15-min slice via civic_analyst's
+    """Default observed-count provider: the TMC 15-min slice via urbanos.risk's
     time-series loader, read ONCE and cached (the file is small and immutable for a
     run). The only place the adapter reaches into civic ingest for counts; callers
     wanting isolation inject their own provider."""
     global _OBSERVED_COUNTS_CACHE
     if _OBSERVED_COUNTS_CACHE is None:
-        from civic_analyst.ingest import timeseries
+        from urbanos.risk.ingest import timeseries
 
         _OBSERVED_COUNTS_CACHE = timeseries.load_counts()
     return _OBSERVED_COUNTS_CACHE
@@ -428,13 +428,13 @@ def reset_bikeshare_demand_cache() -> None:
 
 def _default_bikeshare_demand() -> list:
     """Default Bike Share demand provider: the committed ``bikeshare__*.csv`` slice via
-    civic_analyst's time-series loader (``key="bikeshare"``), read ONCE and cached. No
+    urbanos.risk's time-series loader (``key="bikeshare"``), read ONCE and cached. No
     slice committed today → empty list → callers fall back to a synthetic series. The only
     place the adapter reaches into civic ingest for Bike Share counts; callers wanting
     isolation inject their own provider."""
     global _BIKESHARE_DEMAND_CACHE
     if _BIKESHARE_DEMAND_CACHE is None:
-        from civic_analyst.ingest import timeseries
+        from urbanos.risk.ingest import timeseries
 
         _BIKESHARE_DEMAND_CACHE = timeseries.load_counts(key="bikeshare")
     return _BIKESHARE_DEMAND_CACHE
@@ -493,7 +493,7 @@ def _default_ttc_boardings() -> list:
     when no slice is on the loader's path → callers fall back to a synthetic series."""
     global _TTC_BOARDINGS_CACHE
     if _TTC_BOARDINGS_CACHE is None:
-        from civic_analyst.ingest import timeseries
+        from urbanos.risk.ingest import timeseries
 
         _TTC_BOARDINGS_CACHE = timeseries.load_station_values(
             key="ttc_boardings", value_col="boardings"
@@ -598,7 +598,7 @@ def _default_transit_supply() -> list:
     path → callers fall back to a synthetic series."""
     global _TRANSIT_SUPPLY_CACHE
     if _TRANSIT_SUPPLY_CACHE is None:
-        from civic_analyst.ingest import timeseries
+        from urbanos.risk.ingest import timeseries
 
         _TRANSIT_SUPPLY_CACHE = timeseries.load_station_values(
             key="transit_supply", value_col="departures"

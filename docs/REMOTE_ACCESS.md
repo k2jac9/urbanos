@@ -17,8 +17,8 @@ SSH is **never** exposed to the public internet; Ollama stays bound to `localhos
 > - Box tailnet IP: `100.73.241.60`
 > - MagicDNS name: `gx10-4428` (short) / `gx10-4428.taila9fe06.ts.net` (full)
 > - **Public demo URLs (Funnel)** ← share with judges:
->   - **civic_analyst (`:8000`): https://gx10-4428.taila9fe06.ts.net**
->   - **urban_os (`:8001`): https://gx10-4428.taila9fe06.ts.net:8443** (the flagship; Funnel maps `:8443`→`:8001`)
+>   - **urbanos.risk (`:8000`): https://gx10-4428.taila9fe06.ts.net**
+>   - **urbanos.kernel (`:8001`): https://gx10-4428.taila9fe06.ts.net:8443** (the flagship; Funnel maps `:8443`→`:8001`)
 >
 > Turn **both** public URLs off when the demo's done: `make funnel-off-all` (on the box).
 
@@ -39,8 +39,8 @@ ssh asus@gx10-4428                      # Tailscale SSH (or: ssh asus@100.73.241
 ssh asus@gx10-4428 'systemctl --user restart civic-demo urbanos-demo'
 
 # Public, read-only URLs (no setup needed if the services + Funnels are up):
-#   civic_analyst → https://gx10-4428.taila9fe06.ts.net
-#   urban_os      → https://gx10-4428.taila9fe06.ts.net:8443
+#   urbanos.risk → https://gx10-4428.taila9fe06.ts.net
+#   urbanos.kernel      → https://gx10-4428.taila9fe06.ts.net:8443
 
 # Take BOTH public URLs back down when you're done:
 ssh asus@gx10-4428 'cd ~/dev/spark-hack-toronto && make funnel-off-all'
@@ -48,7 +48,7 @@ ssh asus@gx10-4428 'cd ~/dev/spark-hack-toronto && make funnel-off-all'
 
 **`make demo` = local only** (no public URL) · **`make demo-public` = local + public Funnel for `:8000`** ·
 **`make funnel-off` = teardown of the `:8000`/`:443` Funnel only** ·
-**`make funnel-off-all` = teardown of BOTH** (civic_analyst `:443` + urban_os `:8443`).
+**`make funnel-off-all` = teardown of BOTH** (urbanos.risk `:443` + urbanos.kernel `:8443`).
 The Ctrl-C trap in `make demo-public` is best-effort.
 
 ---
@@ -98,15 +98,15 @@ make funnel-off           # take the public URL back down (reliable teardown)
 policy attr, it just serves locally. Requires `sudo tailscale set --operator=$USER` once so
 the Makefile can manage Funnel without sudo.
 
-Under the hood (if you'd rather do it by hand). **Both apps are published** — civic_analyst on the
-default HTTPS port (`:443`) and urban_os on `:8443`:
+Under the hood (if you'd rather do it by hand). **Both apps are published** — urbanos.risk on the
+default HTTPS port (`:443`) and urbanos.kernel on `:8443`:
 ```bash
-make demo                              # local civic_analyst on :8000 (no public URL)
+make demo                              # local urbanos.risk on :8000 (no public URL)
 tailscale funnel --bg 8000             # publish :8000 publicly on https://…  (→ :443)
-tailscale funnel --bg --https=8443 8001  # publish urban_os :8001 publicly on https://…:8443
+tailscale funnel --bg --https=8443 8001  # publish urbanos.kernel :8001 publicly on https://…:8443
 tailscale serve  --bg 8000             # ...or serve it PRIVATELY on the tailnet only
-tailscale funnel --https=443 off       # turn the civic_analyst public URL off
-tailscale funnel --https=8443 off      # turn the urban_os public URL off
+tailscale funnel --https=443 off       # turn the urbanos.risk public URL off
+tailscale funnel --https=8443 off      # turn the urbanos.kernel public URL off
 ```
 
 ### 4. Keep the demo up across reboots (systemd user service)
@@ -127,7 +127,7 @@ Documentation=https://gx10-4428.taila9fe06.ts.net
 [Service]
 WorkingDirectory=/home/asus/dev/spark-hack-toronto
 Environment=DATA_DIR=demo_data
-ExecStart=/home/asus/dev/spark-hack-toronto/.venv/bin/python -m uvicorn civic_analyst.api.server:app --port 8000 --app-dir src
+ExecStart=/home/asus/dev/spark-hack-toronto/.venv/bin/python -m uvicorn urbanos.risk.api.server:app --port 8000 --app-dir src
 Restart=always
 RestartSec=3
 
@@ -138,15 +138,15 @@ systemctl --user daemon-reload
 systemctl --user enable --now civic-demo.service     # start now + on every boot
 ```
 The box runs **two** such user services (both `active`, with linger enabled):
-- **`civic-demo.service`** — civic_analyst, uvicorn on `:8000`.
-- **`urbanos-demo.service`** — urban_os, uvicorn on `:8001` (local-only; reached via the `:8443` Funnel).
+- **`civic-demo.service`** — urbanos.risk, uvicorn on `:8000`.
+- **`urbanos-demo.service`** — urbanos.kernel, uvicorn on `:8001` (local-only; reached via the `:8443` Funnel).
 
 Manage / inspect them (act on both at once by listing both unit names):
 ```bash
 systemctl --user status civic-demo urbanos-demo     # are they running?
 systemctl --user restart civic-demo urbanos-demo    # e.g. after a `git pull` on the box
 systemctl --user stop civic-demo                    # free :8000 to run `make demo` by hand
-journalctl --user -u civic-demo -f                  # live logs (swap unit name for urban_os)
+journalctl --user -u civic-demo -f                  # live logs (swap unit name for urbanos.kernel)
 ```
 Notes:
 - The units serve **local-only** (`:8000` / `:8001`); Funnel publishes them — so the
@@ -208,13 +208,13 @@ Then just: `ssh gx10`.
 ```bash
 tailscale status                                          # box (tagged-devices) + your devices, online
 ssh asus@gx10-4428 'hostname'                             # → gx10-4428
-curl -s https://gx10-4428.taila9fe06.ts.net/health        # civic_analyst → {"status":"ok",...}  (verified)
-curl -s https://gx10-4428.taila9fe06.ts.net:8443/health   # urban_os      → {"status":"ok",...}  (verified)
+curl -s https://gx10-4428.taila9fe06.ts.net/health        # urbanos.risk → {"status":"ok",...}  (verified)
+curl -s https://gx10-4428.taila9fe06.ts.net:8443/health   # urbanos.kernel      → {"status":"ok",...}  (verified)
 ```
 
 ## Security posture
 - **SSH**: tailnet-only (Tailscale SSH via the `tag:demo` grant) + key fallback. Never funneled to the public internet.
-- **Funnel**: exposes only the **read-only** demo apps — civic_analyst on `:443` (GET `/`, `/analyze`, `/digest`, `/addresses`, `/health`) and urban_os on `:8443`. No mutations, no secrets, no auth needed for the public demo.
+- **Funnel**: exposes only the **read-only** demo apps — urbanos.risk on `:443` (GET `/`, `/analyze`, `/digest`, `/addresses`, `/health`) and urbanos.kernel on `:8443`. No mutations, no secrets, no auth needed for the public demo.
 - **Ollama** (`:11434`) and the **memory/db** stay bound to `localhost` — never exposed.
 - Turn off **both** public URLs the moment the demo's over: `make funnel-off-all`
   (or `tailscale funnel --https=443 off && tailscale funnel --https=8443 off`).
@@ -226,7 +226,7 @@ curl -s https://gx10-4428.taila9fe06.ts.net:8443/health   # urban_os      → {"
   (`systemctl --user status civic-demo urbanos-demo`; restart with
   `systemctl --user restart civic-demo urbanos-demo`); otherwise start `make demo` on the box.
   See *Keep the demo up across reboots* above.
-- urban_os URL (`:8443`) unreachable but civic is fine → that Funnel is managed by hand, not by
+- urbanos.kernel URL (`:8443`) unreachable but civic is fine → that Funnel is managed by hand, not by
   `make funnel-off`. Re-publish it: `tailscale funnel --bg --https=8443 8001`.
 - Can't SSH over tailnet → confirm the **client** is signed into the **same tailnet** (`tailscale status` on the client).
 - LAN SSH only (no Tailscale): `ssh asus@10.10.52.82` — works only on the same wifi.

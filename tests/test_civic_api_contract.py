@@ -1,8 +1,8 @@
-"""Contract / regression lane for the civic_analyst FastAPI surface.
+"""Contract / regression lane for the urbanos.risk FastAPI surface.
 
 Companion to ``tests/test_api.py`` (happy-path) and ``test_analyze_contract.py``
 (fusion/grounded invariants on the real slice). This lane is the public-API
-*hardening* contract added alongside ADR-0006's urban_os work: civic_analyst is
+*hardening* contract added alongside ADR-0006's urbanos.kernel work: urbanos.risk is
 the surface on the public Tailscale Funnel, so it pins both the response SHAPES
 of every endpoint AND the no-stack-trace posture.
 
@@ -25,14 +25,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from civic_analyst.config import settings
+from urbanos.risk.config import settings
 
 # Point the loader at the synthetic fixtures (mirrors test_api.py); the app's
 # lifespan reads settings.data_dir when it (re)loads the graph.
 settings.data_dir = Path(__file__).resolve().parent.parent / "fixtures"
 
-from civic_analyst.api import server  # noqa: E402
-from civic_analyst.api.server import app  # noqa: E402
+from urbanos.risk.api import server  # noqa: E402
+from urbanos.risk.api.server import app  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -130,7 +130,7 @@ def test_digest_shape_is_pinned() -> None:
 def test_digest_warm_cache_serves_same_output_without_rerunning_model(monkeypatch) -> None:
     """Once a real digest is memoized, the public path serves it from the warm cache
     without re-invoking the batch model — and the output is byte-for-byte unchanged."""
-    import civic_analyst.agents.digest as digest
+    import urbanos.risk.agents.digest as digest
 
     with digest._lock:
         digest._cache.clear()

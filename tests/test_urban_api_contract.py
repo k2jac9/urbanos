@@ -35,8 +35,8 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from urban_os import api
-from urban_os.api import app
+from urbanos.kernel import api
+from urbanos.kernel.api import app
 
 client = TestClient(app)
 
@@ -398,7 +398,7 @@ def test_optimize_grounded_path_with_stub_llm(monkeypatch):
     """Pin the ``grounded is True`` branch end-to-end with a deterministic stub
     LLM that echoes only real figures — proving the endpoint surfaces a verified
     sentence (not just the offline fallback) and the citation invariant holds."""
-    from urban_os import narrate
+    from urbanos.kernel import narrate
 
     class _StubLLM:
         def chat(self, system, user, temperature=0.0):  # noqa: ARG002
@@ -426,7 +426,7 @@ def test_optimize_grounded_path_with_stub_llm(monkeypatch):
 def test_optimize_falls_back_when_llm_hallucinates(monkeypatch):
     """A model that injects a fabricated number must be rejected → the response
     falls back to the deterministic (grounded=False) sentence."""
-    from urban_os import narrate
+    from urbanos.kernel import narrate
 
     class _LiarLLM:
         def chat(self, system, user, temperature=0.0):  # noqa: ARG002

@@ -22,10 +22,10 @@ providers, no network, no committed data.
 """
 import numpy as np
 
-from urban_os import learned_dynamics as ld
-from urban_os.adapters.toronto import downtown_scenario, observed_counts_by_node
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge
+from urbanos.kernel import learned_dynamics as ld
+from urbanos.kernel.adapters.toronto import downtown_scenario, observed_counts_by_node
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge
 
 
 def _run(sc, release=0.0):
@@ -189,7 +189,7 @@ def test_lenses_endpoint_exposes_learned_dynamics_block_off_by_default(monkeypat
     monkeypatch.delenv("URBANOS_LEARNED_DYNAMICS", raising=False)
     from fastapi.testclient import TestClient
 
-    from urban_os.api import app
+    from urbanos.kernel.api import app
 
     client = TestClient(app)
     r = client.get("/lenses", params={"release_minutes": 8.0, "shelter_fraction": 0.5})
@@ -212,7 +212,7 @@ def test_lenses_endpoint_headline_identical_with_flag_on_off(monkeypatch):
     on and off. This is the 'no headline number moved' guarantee, end to end."""
     from fastapi.testclient import TestClient
 
-    from urban_os.api import app
+    from urbanos.kernel.api import app
 
     client = TestClient(app)
     params = {"release_minutes": 8.0, "shelter_fraction": 0.5}

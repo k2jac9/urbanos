@@ -15,9 +15,9 @@ from pathlib import Path
 # Allow running as a plain script without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from civic_analyst.config import settings  # noqa: E402
-from civic_analyst.ingest.ckan import CKANClient  # noqa: E402
-from civic_analyst.ingest.datasets import REGISTRY  # noqa: E402
+from urbanos.risk.config import settings  # noqa: E402
+from urbanos.risk.ingest.ckan import CKANClient  # noqa: E402
+from urbanos.risk.ingest.datasets import REGISTRY  # noqa: E402
 
 
 def download(keys: list[str]) -> None:

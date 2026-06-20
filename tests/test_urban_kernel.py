@@ -6,8 +6,8 @@ from __future__ import annotations
 import networkx as nx
 import numpy as np
 
-from urban_os.kernel import Simulation, Substrate
-from urban_os.kernel.operators import Lens, Operators
+from urbanos.kernel.kernel import Simulation, Substrate
+from urbanos.kernel.kernel.operators import Lens, Operators
 
 
 def _line_graph() -> Substrate:

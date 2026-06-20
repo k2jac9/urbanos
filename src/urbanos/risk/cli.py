@@ -1,4 +1,4 @@
-"""Command-line entry point: python -m civic_analyst.cli analyze "100 Queen St W"."""
+"""Command-line entry point: python -m urbanos.risk.cli analyze "100 Queen St W"."""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,7 @@ from .ingest.loader import load_into_graph
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="civic_analyst")
+    parser = argparse.ArgumentParser(prog="urbanos.risk")
     sub = parser.add_subparsers(dest="command", required=True)
     a = sub.add_parser("analyze", help="risk read for an address")
     a.add_argument("address")

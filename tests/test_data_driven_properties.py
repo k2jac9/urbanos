@@ -28,18 +28,18 @@ import warnings
 import networkx as nx
 import numpy as np
 
-from urban_os import learned_dynamics as ld
-from urban_os.adapters.toronto import (
+from urbanos.kernel import learned_dynamics as ld
+from urbanos.kernel.adapters.toronto import (
     _synthetic_counts_by_node,
     downtown_scenario,
     downtown_substrate,
     observed_counts_by_node,
 )
-from urban_os.kernel import Simulation
-from urban_os.kernel.state import Substrate
-from urban_os.lenses import EconomicLens, EventSurge
-from urban_os.lenses.congestion_nowcast import CongestionNowcastLens
-from urban_os.lenses.congestion_nowcast import _cosine as nc_cosine
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.kernel.state import Substrate
+from urbanos.kernel.lenses import EconomicLens, EventSurge
+from urbanos.kernel.lenses.congestion_nowcast import CongestionNowcastLens
+from urbanos.kernel.lenses.congestion_nowcast import _cosine as nc_cosine
 
 
 # --- shared helpers (mirror the existing test files' construction) ----------

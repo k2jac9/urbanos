@@ -1,9 +1,9 @@
 """Guard the committed REAL downtown slice so `make demo` always works on real data."""
 from pathlib import Path
 
-from civic_analyst.agents.supervisor import Supervisor
-from civic_analyst.graph.builder import CivicGraph
-from civic_analyst.ingest.loader import load_into_graph
+from urbanos.risk.agents.supervisor import Supervisor
+from urbanos.risk.graph.builder import CivicGraph
+from urbanos.risk.ingest.loader import load_into_graph
 
 SLICE = Path(__file__).resolve().parent.parent / "demo_data"
 

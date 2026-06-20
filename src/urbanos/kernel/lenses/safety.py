@@ -1,7 +1,7 @@
 """Safety lens — the civic risk app, made literal as an Urban-OS kernel lens.
 
 This fulfils the architecture's claim ("the static risk app becomes the
-Safety/Public-Services lens on this kernel"): it lifts civic_analyst's
+Safety/Public-Services lens on this kernel"): it lifts urbanos.risk's
 *address-level* compliance-safety risk onto the substrate as a static per-node
 field, then prices the one thing that turns a transit crush into a *public-safety*
 event rather than just a delay — a crowd crushing through a district that is
@@ -10,7 +10,7 @@ staggered-release lever that eases Union is now also optimized to keep crowds ou
 of crushes in the least-safe districts.
 
 It connects the two apps: ``node_risk`` is derived by the Toronto adapter from
-the civic_analyst graph (``adapters.civic_safety_by_node``) — real fusion, address
+the urbanos.risk graph (``adapters.civic_safety_by_node``) — real fusion, address
 risk → node field. The lens itself is pure (takes the mapping), **read-only** on
 the crowd fields, and **additive** (a test asserts it doesn't change the other
 lenses). ``VALUE_OF_CIVIC_SAFETY`` is synthetic-but-plausible, flagged in

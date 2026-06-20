@@ -11,7 +11,7 @@ The knowledge graph is built once at startup from pre-downloaded datasets
 and the server still boots, so the API is safe to run offline.
 
 Public-surface hardening (this app rides the public Tailscale Funnel that judges
-hit, so it gets the same posture urban_os got in ADR-0006):
+hit, so it gets the same posture urbanos.kernel got in ADR-0006):
 - no stack-trace leak — every endpoint body and an app-level handler turn an
   internal failure into a clean generic 500 with no internals;
 - explicit, restrictive CORS — same-origin only (no wildcard) for a read-only demo;

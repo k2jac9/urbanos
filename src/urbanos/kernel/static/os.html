@@ -396,7 +396,7 @@
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
   // ---- shared state ----
-  let SCEN = null;        // urban_os /scenario
+  let SCEN = null;        // urbanos.kernel /scenario
   let SIM = null;         // current /simulate payload
   let ADDRS = [];         // /civic/addresses
   let FRAME = 0, playing = false, timer = null;
@@ -459,7 +459,7 @@
   addEventListener('resize', () => map.resize());
   const hover = new maplibregl.Popup({ closeButton:false, closeOnClick:false, offset:12 });
 
-  // ---- urban_os substrate features ----
+  // ---- urbanos.kernel substrate features ----
   // F-5: the City lens shows steady-state crush (the worst congestion each node
   // reaches over the whole run), so the map is red where the panel says crush 3.73×.
   // The Flow lens scrubs frame-by-frame, so it colours by the CURRENT frame.

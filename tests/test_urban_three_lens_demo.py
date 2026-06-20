@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from urban_os.api import _lenses, _scenario, app
+from urbanos.kernel.api import _lenses, _scenario, app
 
 client = TestClient(app)
 

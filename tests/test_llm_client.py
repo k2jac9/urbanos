@@ -1,4 +1,4 @@
-"""Unit tests for civic_analyst.agents.llm.LocalLLM.chat.
+"""Unit tests for urbanos.risk.agents.llm.LocalLLM.chat.
 
 This is a real demo-failure surface: the narrator wraps chat() in a guard that
 catches httpx errors and falls back to the deterministic path. These tests pin
@@ -15,7 +15,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from civic_analyst.agents.llm import LocalLLM
+from urbanos.risk.agents.llm import LocalLLM
 
 
 def _patch_transport(monkeypatch, handler):

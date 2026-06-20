@@ -83,7 +83,7 @@ step; full plan in ADR-0027). The live demo defaults to `LLM_RUNTIME=ollama` and
 blocked. **Do not swap the live `civic-demo` to TRT-LLM during judging** (memory + no speed win).
 
 > **PhysicsNeMo (Modulus) — interface only, no box step.** The optimizer's surrogate seam
-> (`urban_os/surrogate.py`, `URBANOS_SURROGATE=1`) ships *without* a trained checkpoint, so
+> (`urbanos/kernel/surrogate.py`, `URBANOS_SURROGATE=1`) ships *without* a trained checkpoint, so
 > the exact kernel decides every result. There is nothing to activate on the box; training a
 > checkpoint is the documented next step (ADR-0027). Don't claim a working surrogate.
 
@@ -97,7 +97,7 @@ Reproduce (run as the box user that owns `~/.openclaw`):
 ```bash
 # 1) Register our MCP server. OpenClaw BLOCKS PYTHONPATH for stdio-startup safety, so set it
 #    *inside* a shell wrapper (not via the env map), with absolute paths + the repo venv:
-openclaw mcp set toronto-civic '{"command":"/bin/sh","args":["-c","cd /home/asus/dev/spark-hack-toronto && PYTHONPATH=src DATA_DIR=demo_data exec .venv/bin/python -m civic_analyst.mcp_server"],"env":{"LLM_BASE_URL":"http://localhost:11434/v1","LLM_MODEL":"nemotron-3-nano"}}'
+openclaw mcp set toronto-civic '{"command":"/bin/sh","args":["-c","cd /home/asus/dev/spark-hack-toronto && PYTHONPATH=src DATA_DIR=demo_data exec .venv/bin/python -m urbanos.risk.mcp_server"],"env":{"LLM_BASE_URL":"http://localhost:11434/v1","LLM_MODEL":"nemotron-3-nano"}}'
 openclaw mcp list           # → toronto-civic
 
 # 2) Give OpenClaw a working local model (Ollama/Nemotron) and allow-list it for the agent:

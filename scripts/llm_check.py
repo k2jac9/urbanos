@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import time
 
-from civic_analyst.agents import llm
-from civic_analyst.config import settings
+from urbanos.risk.agents import llm
+from urbanos.risk.config import settings
 
 
 def main() -> int:

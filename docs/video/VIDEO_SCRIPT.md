@@ -1,6 +1,6 @@
 # Demo Video — 5-Minute Shot-by-Shot Script
 
-Submission video for **NVIDIA Spark Hack Toronto** (Urban-OS / civic_analyst). Target
+Submission video for **NVIDIA Spark Hack Toronto** (Urban-OS / urbanos.risk). Target
 **3:45–4:30**, hard cap **5:00**. Screen-recorded (Loom/OBS) with **camera on** for the
 intro + close. Follows the official 5-section flow.
 

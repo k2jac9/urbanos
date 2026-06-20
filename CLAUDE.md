@@ -16,14 +16,14 @@ offline map at http://localhost:8000/ (and `make urbanos` the simulation UI at :
 them at the workflow + "Current status" below.
 
 ## What this is
-A **full, ongoing local-first project** — two apps over one architecture: `civic_analyst`
-(address-level civic-risk) and `urban_os` (an urban-stress simulation kernel). FastAPI + a
+A **full, ongoing local-first project** — two apps over one architecture: `urbanos.risk`
+(address-level civic-risk) and `urbanos.kernel` (an urban-stress simulation kernel). FastAPI + a
 supervisor/sub-agent pipeline over a `networkx` knowledge graph of Toronto open data, a local
 Nemotron model (OpenAI-compatible endpoint), MapLibre + offline PMTiles map. It **began at
 NVIDIA Spark Hack Toronto (May 2026)** and is now developed as a real project, not a demo —
 that origin is preserved as history in older ADRs, the pitch, and the video kit; the
 forward-looking framing here treats it as a maintained product.
-Layout: `src/civic_analyst/{ingest,graph,agents,api}`, `src/urban_os/`, `tests/`, `scripts/`, `demo_data/`.
+Layout: `src/urbanos/risk/{ingest,graph,agents,api}`, `src/urbanos/kernel/`, `tests/`, `scripts/`, `demo_data/`.
 
 ## Golden commands (run before every push)
 - `make test`   — `PYTHONPATH=src pytest`; **must be green** (CI enforces it on main)
@@ -95,7 +95,7 @@ Layout: `src/civic_analyst/{ingest,graph,agents,api}`, `src/urban_os/`, `tests/`
 > the original deployment (below) remains live.
 
 > **UrbanOS platform-unification + UX redesign (2026-06-20, ADR-0033).** The two apps are now
-> **one product**: a single CI-gated UrbanOS shell (`urban_os.api:app` at `/`) with a lens rail
+> **one product**: a single CI-gated UrbanOS shell (`urbanos.kernel.api:app` at `/`) with a lens rail
 > (City · Risk · Flow · Economy) over one map; the civic risk app is the **Risk lens**, mounted
 > same-origin at `/civic`. Shipped (all merged + CI-green): **#112** rebrand + ADR-0033 · **#113**
 > unified shell (Safety→Risk display rename; `make demo` serves the one app) · **#114** identity v1
@@ -106,7 +106,7 @@ Layout: `src/civic_analyst/{ingest,graph,agents,api}`, `src/urban_os/`, `tests/`
 > view ↗") · **#111** map-heat grouping + legend · **#117** the **City lens** now shows the
 > optimizer's grounded insight + before/after (was Flow-only). **Visual/integration only — golden
 > numbers, the offline map, and the hallucination guard are unchanged; Suite still 584 green / 1
-> skipped.** Python packages stay `urban_os`/`civic_analyst` for now; the source-package + local
+> skipped.** Python packages stay `urbanos.kernel`/`urbanos.risk` for now; the source-package + local
 > folder rename to UrbanOS are **deliberately deferred** (their own future step, not started).
 
 **Context & origin docs:** `docs/ON_THE_BOX.md` (box runbook, operational), `docs/HANDOFF.md`,
@@ -116,11 +116,11 @@ tests (`make test` ≈ **584 green**). Everything below is **merged on `main` + 
 the **original GPU deployment remains live** (see "GPU stack" below).
 
 **The project is two apps that share one architecture:**
-- **`civic_analyst` (`:8000`)** — the address risk app: 3 fused Toronto datasets (DineSafe +
+- **`urbanos.risk` (`:8000`)** — the address risk app: 3 fused Toronto datasets (DineSafe +
   permits + licences), deterministic risk (now **two-index: Safety + Activity**, ADR-0014),
   local-Nemotron narrator + **hallucination guard** + **click-to-verify**. Plus **Presentation
   Mode** (cyber theme + 3D real-building focus + floating info board) and a CSS design-token system.
-- **`urban_os` (`:8001`)** — the flagship: a simulation **kernel** (substrate + time loop + the four
+- **`urbanos.kernel` (`:8001`)** — the flagship: a simulation **kernel** (substrate + time loop + the four
   operators) with **four lenses** — EventSurge · Economic · **Safety (the civic risk app, made a
   *literal* kernel lens)** · **BusinessFlow** — and an optimizer. One staggered-release lever
   (`make urbanos-cli`: Union Station 3.73× capacity @ t=47min; do-nothing J $323,222 → best

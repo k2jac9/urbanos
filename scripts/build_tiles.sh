@@ -9,7 +9,7 @@ set -euo pipefail
 
 BUILD="${BUILD:-https://build.protomaps.com/20251201.pmtiles}"   # pick a recent daily build
 BBOX="${BBOX:--79.43,43.62,-79.34,43.69}"                        # downtown Toronto
-OUT="${OUT:-src/civic_analyst/api/static/toronto.pmtiles}"
+OUT="${OUT:-src/urbanos/risk/api/static/toronto.pmtiles}"
 MAXZOOM="${MAXZOOM:-15}"
 
 pmtiles extract "$BUILD" "$OUT" --bbox="$BBOX" --maxzoom="$MAXZOOM"

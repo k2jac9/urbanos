@@ -84,8 +84,8 @@ Clicks: unplug → Safety pin + ✓-verify → Flow (Union 4.0×) → drag lever
 | 140,800 people, 4 concurrent let-outs, 17 nodes / 25 edges | [ADR-0018](adr/0018-fifa-convergence-crunch-substrate.md) substrate |
 | Union **4.0× → 1.0× (−75%)**, **16-min release + 80% shelter**, safety **$50.9k→$0**, business **+$10.7k**, **~$455k combined** | **Live `:8001` UI `GET /optimize`** (3-lens, incl. WeatherLens/shelter) — *the climax surface* |
 | (alt) Union 3.7×, 14-min release, −67%, ~$218k | `make urbanos-cli` (2-lens, transit-only) — cite only if you're showing the CLI |
-| (alt) ~$281k; safety $53.7k→$1.6k; business $10.4k | `PYTHONPATH=src python -m urban_os.cli --safety --business` (4-lens, no weather) |
-| 500 Bloor St W: two-index Safety/Activity, 8 permits, 3 fused datasets, ✓-verify | civic_analyst `:8000` `/analyze` + click-to-verify (ADR-0014 two-index) |
+| (alt) ~$281k; safety $53.7k→$1.6k; business $10.4k | `PYTHONPATH=src python -m urbanos.kernel.cli --safety --business` (4-lens, no weather) |
+| 500 Bloor St W: two-index Safety/Activity, 8 permits, 3 fused datasets, ✓-verify | urbanos.risk `:8000` `/analyze` + click-to-verify (ADR-0014 two-index) |
 | $6.2M Fan Festival deficit, $10 ticket | [ADR-0018](adr/0018-fifa-convergence-crunch-substrate.md) (toronto.ca / blogto.com anchors) |
 
 **The climax narrates the `:8001` 3-lens UI numbers (release + shelter → ~$455k).** If
@@ -95,7 +95,7 @@ and don't mention shelter. One surface per breath.
 Reproduce the headline surfaces:
 ```bash
 make urbanos-cli                                            # A — transit core (2-lens): 3.7×, 14-min, ~$218k
-PYTHONPATH=src python -m urban_os.cli --safety --business   # B — full cross-domain (4 lenses): ~$281k
+PYTHONPATH=src python -m urbanos.kernel.cli --safety --business   # B — full cross-domain (4 lenses): ~$281k
 # C — the live-UI optimum (3-lens w/ weather+shelter), the climax numbers:
-PYTHONPATH=src python -c "from fastapi.testclient import TestClient; from urban_os.api import app; import json; print(json.dumps(TestClient(app).get('/optimize').json()['figures'], indent=2))"
+PYTHONPATH=src python -c "from fastapi.testclient import TestClient; from urbanos.kernel.api import app; import json; print(json.dumps(TestClient(app).get('/optimize').json()['figures'], indent=2))"
 ```

@@ -62,10 +62,10 @@ data:
 	$(PYTHON) scripts/download_data.py
 
 serve:
-	$(PYTHON) -m uvicorn civic_analyst.api.server:app --reload --port 8000 --app-dir src
+	$(PYTHON) -m uvicorn urbanos.risk.api.server:app --reload --port 8000 --app-dir src
 
 cli:
-	$(PYTHON) -m civic_analyst.cli analyze "100 Queen St W"
+	$(PYTHON) -m urbanos.risk.cli analyze "100 Queen St W"
 
 test:
 	PYTHONPATH=src $(PYTHON) -m pytest -q
@@ -76,7 +76,7 @@ demo:
 	@echo "Serving the unified UrbanOS platform on REAL downtown data (demo_data/). Once up:"
 	@echo "  open http://localhost:8000/                 # UrbanOS shell — lenses over one map"
 	@echo "  open http://localhost:8000/civic/           # Risk lens — address-level civic risk"
-	DATA_DIR=$(DEMO_DATA) PYTHONPATH=src $(PYTHON) -m uvicorn urban_os.api:app --port 8000 --app-dir src
+	DATA_DIR=$(DEMO_DATA) PYTHONPATH=src $(PYTHON) -m uvicorn urbanos.kernel.api:app --port 8000 --app-dir src
 
 # Public demo: same as `make demo`, but also flips this box's Tailscale Funnel
 # ON (public read-only HTTPS URL) for the session and turns it OFF on exit.
@@ -93,20 +93,20 @@ demo-public:
 	  echo "  (Funnel unavailable — serving local-only; see docs/REMOTE_ACCESS.md)"; \
 	fi; \
 	echo "  LOCAL:  http://localhost:8000/"; \
-	DATA_DIR=$(DEMO_DATA) $(PYTHON) -m uvicorn civic_analyst.api.server:app --port 8000 --app-dir src
+	DATA_DIR=$(DEMO_DATA) $(PYTHON) -m uvicorn urbanos.risk.api.server:app --port 8000 --app-dir src
 
-# Reliably take the civic_analyst public demo URL down (Funnel :443 off). Run after a public demo.
+# Reliably take the urbanos.risk public demo URL down (Funnel :443 off). Run after a public demo.
 funnel-off:
-	@tailscale funnel --https=443 off 2>/dev/null && echo "Funnel off — civic_analyst public URL is down." \
+	@tailscale funnel --https=443 off 2>/dev/null && echo "Funnel off — urbanos.risk public URL is down." \
 	  || echo "Funnel was not on (or tailscale unavailable)."
 
-# Take BOTH public demo URLs down: civic_analyst (:443->:8000) AND urban_os (:8443->:8001).
-# Use this on the box when wrapping up — the urban_os Funnel isn't covered by `make funnel-off`.
+# Take BOTH public demo URLs down: urbanos.risk (:443->:8000) AND urbanos.kernel (:8443->:8001).
+# Use this on the box when wrapping up — the urbanos.kernel Funnel isn't covered by `make funnel-off`.
 funnel-off-all:
-	@tailscale funnel --https=443 off 2>/dev/null && echo "Funnel off — civic_analyst (:443) public URL is down." \
-	  || echo "civic_analyst Funnel was not on (or tailscale unavailable)."
-	@tailscale funnel --https=8443 off 2>/dev/null && echo "Funnel off — urban_os (:8443) public URL is down." \
-	  || echo "urban_os Funnel was not on (or tailscale unavailable)."
+	@tailscale funnel --https=443 off 2>/dev/null && echo "Funnel off — urbanos.risk (:443) public URL is down." \
+	  || echo "urbanos.risk Funnel was not on (or tailscale unavailable)."
+	@tailscale funnel --https=8443 off 2>/dev/null && echo "Funnel off — urbanos.kernel (:8443) public URL is down." \
+	  || echo "urbanos.kernel Funnel was not on (or tailscale unavailable)."
 
 # Rebuild the real downtown slices from the live datasets (static civic + dynamic
 # multimodal counts). Both are offline-safe: a network failure leaves existing
@@ -122,25 +122,25 @@ demo-data:
 # 100 Queen St W → two independent indices (ADR 0014):
 #   safety 0.593 (medium, 2 adverse visits) · activity 0.113 (low, 2 open permits).
 demo-cli:
-	DATA_DIR=$(FIXTURES) PYTHONPATH=src $(PYTHON) -m civic_analyst.cli analyze "100 Queen St W"
+	DATA_DIR=$(FIXTURES) PYTHONPATH=src $(PYTHON) -m urbanos.risk.cli analyze "100 Queen St W"
 
 # ---- Urban-OS: the dynamics-kernel demo (event egress → optimized intervention) ----
 
 # Serve the Urban-OS simulation + offline heatmap/time-slider map at :8000.
 urbanos:
 	@echo "Urban-OS map at http://localhost:8000/ (offline). Endpoints: /scenario /simulate /optimize"
-	PYTHONPATH=src $(PYTHON) -m uvicorn urban_os.api:app --port 8000 --app-dir src
+	PYTHONPATH=src $(PYTHON) -m uvicorn urbanos.kernel.api:app --port 8000 --app-dir src
 
 # One-shot CLI: run + optimize the downtown egress scenario, print the cited insight.
 urbanos-cli:
-	PYTHONPATH=src $(PYTHON) -m urban_os.cli
+	PYTHONPATH=src $(PYTHON) -m urbanos.kernel.cli
 
 # Build the optional Rust accelerator (aarch64) and report the active backend.
 # Falls back to numpy automatically if this is skipped — the demo never needs it.
 urbanos-accel:
 	$(PYTHON) -m pip install -q maturin
 	$(dir $(PYTHON))maturin develop --release -m native/Cargo.toml
-	@PYTHONPATH=src $(PYTHON) -c "from urban_os.kernel import accel; print('Urban-OS transport backend:', accel.backend_name())"
+	@PYTHONPATH=src $(PYTHON) -c "from urbanos.kernel.kernel import accel; print('Urban-OS transport backend:', accel.backend_name())"
 
 # Benchmark the active transport backend vs the numpy reference: asserts f64
 # parity (when rust is built) and reports the wall-clock speedup. Runs anywhere
@@ -157,7 +157,7 @@ screenshot:
 
 # ---- Local dev stack (WSL/Linux): live Ollama narrator + BOTH apps in background ----
 # `make dev` brings up ollama (if installed; pulls + pins the dev model) and serves
-# civic_analyst (:8000) + urban_os (:8001) in the background, then prints the URLs.
+# urbanos.risk (:8000) + urbanos.kernel (:8001) in the background, then prints the URLs.
 # Degrades gracefully with no ollama (deterministic narrator). Stop with `make dev-down`.
 # Override the model/ports via env: LLM_MODEL=... CIVIC_PORT=... URBAN_PORT=...
 dev:

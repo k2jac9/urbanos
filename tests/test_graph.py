@@ -1,4 +1,4 @@
-from civic_analyst.graph.builder import (
+from urbanos.risk.graph.builder import (
     CivicGraph,
     in_toronto_bbox,
     normalize_address,

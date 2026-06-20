@@ -7,8 +7,8 @@ token while keeping the street number and postal code intact.
 
 Offline-safe — uses stub LLMs, never a real network call.
 """
-import civic_analyst.agents.digest as digest
-from civic_analyst.agents.digest import _addr, _clean_label, city_digest
+import urbanos.risk.agents.digest as digest
+from urbanos.risk.agents.digest import _addr, _clean_label, city_digest
 
 
 def test_cleaner_removes_standalone_none_token():

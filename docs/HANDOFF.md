@@ -37,7 +37,7 @@ box is a few commits behind, and `:8001` is still serving *old* Urban-OS numbers
 # on the box, as asus, in the repo:
 cd ~/dev/spark-hack-toronto && git pull --rebase
 systemctl --user restart civic-demo          # :8000 — picks up the Python changes
-# restart your :8001 urban_os process too (it serves the stale optimize numbers)
+# restart your :8001 urbanos.kernel process too (it serves the stale optimize numbers)
 ```
 After that, `make urbanos-cli` and `:8001`'s "Find best intersection" show the
 current FIFA convergence-crunch numbers (see the top section: 2-lens **14-min /
@@ -47,7 +47,7 @@ combined**), plus the cross-domain panel.
 **2. Heads-up: I touched your `~/.openclaw/openclaw.json`** (additively, backed up —
 see NemoClaw below). Your default Qwen/vLLM setup is **unchanged**.
 
-## 🧩 What landed on `main` (mostly `urban_os/` + the civic map UI)
+## 🧩 What landed on `main` (mostly `urbanos/kernel/` + the civic map UI)
 - **#33** Presentation Mode on the civic map (`:8000`): cyber theme + 3D building
   focus + info board (you refined the footprint highlight in #47–49 — thanks).
 - **#38** design-token refactor of `map.html` (Conservative pixel-identical).
@@ -59,7 +59,7 @@ see NemoClaw below). Your default Qwen/vLLM setup is **unchanged**.
 - **#57** cross-domain panel in the `:8001` optimize view + `docs/PITCH.md`. Rebased
   on your **#58** (kept your `breakdownRowsHTML` helper + `BEST_PARAMS`).
 
-One fix worth knowing: `civic_analyst.mcp_server.load()` **accumulates** into its
+One fix worth knowing: `urbanos.risk.mcp_server.load()` **accumulates** into its
 module-global graph on repeated calls — I added a cache in `civic_safety_by_node`
 so the per-request safety number stays stable ($21,730). Flagging in case you call
 `load()` elsewhere.

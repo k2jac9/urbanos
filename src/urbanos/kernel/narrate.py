@@ -1,7 +1,7 @@
 """Killer-insight narrator — the one cited sentence the demo is built around.
 
-Reuses civic_analyst's local-LLM client *and* its hallucination-guard pattern
-(see ``civic_analyst.agents.verify``): the simulation computes every figure
+Reuses urbanos.risk's local-LLM client *and* its hallucination-guard pattern
+(see ``urbanos.risk.agents.verify``): the simulation computes every figure
 deterministically; the local model only gets to phrase them. We whitelist
 exactly the numbers the simulation produced and reject any sentence that
 introduces a number outside that set, falling back to a correct-by-construction
@@ -24,7 +24,7 @@ import math
 import re
 from dataclasses import dataclass
 
-from civic_analyst.agents.llm import LocalLLM, interactive_llm
+from urbanos.risk.agents.llm import LocalLLM, interactive_llm
 
 from .optimize import OptResult
 
@@ -76,7 +76,7 @@ def _canon(val: float) -> str:
 
 
 # Years are descriptive context, not simulation outputs; exempt them from the
-# whitelist exactly as civic_analyst's verifier does (1900..2100).
+# whitelist exactly as urbanos.risk's verifier does (1900..2100).
 def _is_year(tok: str) -> bool:
     try:
         v = float(tok)

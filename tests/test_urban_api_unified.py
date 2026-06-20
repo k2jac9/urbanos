@@ -1,13 +1,13 @@
 """Tests for the unified Urban-OS shell surface.
 
-The urban_os app (:8001) is becoming the single origin for the forthcoming
+The urbanos.kernel app (:8001) is becoming the single origin for the forthcoming
 "Urban OS" shell: it mounts the civic address-risk app at /civic and adds the
 new shell routes (/os, /classic). These tests assert that integration is real
 and PURELY ADDITIVE — the existing /, /health, /scenario, /simulate, /optimize
 behaviour is covered by test_urban_api.py and must stay untouched.
 
 CRITICAL: civic's data graph is loaded by its own ``lifespan``, which does NOT
-fire for a mounted sub-app under this Starlette version. The urban_os app
+fire for a mounted sub-app under this Starlette version. The urbanos.kernel app
 reproduces that load in its OWN lifespan, so /civic/addresses must return real
 data when the app is driven through a ``with TestClient(...)`` block (which
 enters the lifespan). We point the civic loader at the committed synthetic
@@ -20,12 +20,12 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 # Point civic's loader at the deterministic fixtures BEFORE importing the app —
-# the urban_os lifespan reads settings.data_dir to load civic's graph.
-from civic_analyst.config import settings as _civic_settings
+# the urbanos.kernel lifespan reads settings.data_dir to load civic's graph.
+from urbanos.risk.config import settings as _civic_settings
 
 _civic_settings.data_dir = Path(__file__).resolve().parent.parent / "fixtures"
 
-from urban_os.api import app  # noqa: E402
+from urbanos.kernel.api import app  # noqa: E402
 
 _ADDRESS_KEYS = {
     "label",
@@ -163,7 +163,8 @@ def test_os_route_exists_and_404s_gracefully_until_built():
     os_html = (
         Path(__file__).resolve().parent.parent
         / "src"
-        / "urban_os"
+        / "urbanos"
+        / "kernel"
         / "static"
         / "os.html"
     )

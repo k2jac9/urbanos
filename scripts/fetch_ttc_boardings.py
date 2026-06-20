@@ -33,7 +33,7 @@ from pathlib import Path
 # Allow running as a plain script without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from civic_analyst.ingest.ckan import CKANClient  # noqa: E402
+from urbanos.risk.ingest.ckan import CKANClient  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "demo_data"

@@ -12,12 +12,12 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from urban_os.kernel import state as kstate
-from urban_os.optimize import optimize
-from urban_os.adapters import downtown_scenario
-from urban_os.lenses import EconomicLens, EventSurge
+from urbanos.kernel.kernel import state as kstate
+from urbanos.kernel.optimize import optimize
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.lenses import EconomicLens, EventSurge
 
-from civic_analyst.ingest import loader
+from urbanos.risk.ingest import loader
 
 _HAS_POLARS = importlib.util.find_spec("polars") is not None
 
@@ -110,7 +110,7 @@ def test_force_pandas_backend(monkeypatch):
 def test_optimal_evacuation_flow_cpu():
     """The networkx max-flow CPU path computes a sane evacuation bound and reports
     its backend. cuOpt LP is the GPU path (env-gated); identical optimum (box-proven)."""
-    from urban_os import flow
+    from urbanos.kernel import flow
     sc = downtown_scenario()
     demands = {vid: crowd for vid, crowd, _ in sc.events}
     r = flow.optimal_evacuation_flow(sc.substrate, demands, horizon=sc.horizon)
@@ -122,7 +122,7 @@ def test_optimal_evacuation_flow_cpu():
 
 
 def test_flow_gpu_disabled_by_default(monkeypatch):
-    from urban_os import flow
+    from urbanos.kernel import flow
     monkeypatch.delenv("URBANOS_GPU_FLOW", raising=False)
     assert flow._gpu_flow_enabled() is False
 
@@ -131,7 +131,7 @@ def test_flow_gpu_disabled_by_default(monkeypatch):
 def test_risk_hotspots_cpu_deterministic():
     """The numpy KMeans CPU path is deterministic and separates risk zones; cuML is
     the GPU path (env-gated)."""
-    from civic_analyst import cluster
+    from urbanos.risk import cluster
     addrs = [
         {"lat": 43.65, "lng": -79.38, "risk_safety": 0.9, "risk_activity": 0.1},
         {"lat": 43.651, "lng": -79.381, "risk_safety": 0.8, "risk_activity": 0.2},
@@ -148,7 +148,7 @@ def test_risk_hotspots_cpu_deterministic():
 
 
 def test_risk_hotspots_empty_and_gating(monkeypatch):
-    from civic_analyst import cluster
+    from urbanos.risk import cluster
     assert cluster.risk_hotspots([], k=3) == []
     monkeypatch.delenv("URBANOS_GPU_CLUSTER", raising=False)
     assert cluster._gpu_cluster_enabled() is False
@@ -158,14 +158,14 @@ def test_risk_hotspots_empty_and_gating(monkeypatch):
 def test_llm_backend_defaults_to_configured_runtime():
     """The narrator client records which runtime serves it. Default is the configured
     runtime (ollama), set without ever contacting an endpoint — proof-of-invocation seam."""
-    from civic_analyst.agents import llm
+    from urbanos.risk.agents import llm
     assert llm.LLM_BACKEND in {"ollama", "tensorrt-llm", "nim", "vllm"}
 
 
 def test_llm_client_carries_runtime_override():
     """A LocalLLM can be told its runtime (e.g. trtllm-serve on the box) without any
     code change — the client only speaks OpenAI-compatible HTTP."""
-    from civic_analyst.agents.llm import LocalLLM
+    from urbanos.risk.agents.llm import LocalLLM
     c = LocalLLM(base_url="http://localhost:8000/v1", runtime="tensorrt-llm")
     assert c.runtime == "tensorrt-llm"
     # No network was touched constructing it.
@@ -173,7 +173,7 @@ def test_llm_client_carries_runtime_override():
 
 # -------------------------------------------------- Modulus/PhysicsNeMo surrogate seam
 def test_surrogate_disabled_by_default(monkeypatch):
-    from urban_os import surrogate
+    from urbanos.kernel import surrogate
     monkeypatch.delenv("URBANOS_SURROGATE", raising=False)
     assert surrogate.surrogate_enabled() is False
     # Enabled but no checkpoint → still no model (honest exact-kernel fallback).
@@ -185,7 +185,7 @@ def test_surrogate_disabled_by_default(monkeypatch):
 def test_optimizer_reports_surrogate_backend_none_by_default():
     """With the surrogate off, the optimizer runs the exact kernel for everything and
     records SURROGATE_BACKEND=none. The chosen best is unchanged from pure grid."""
-    from urban_os import surrogate
+    from urbanos.kernel import surrogate
     sc = downtown_scenario()
     opt = optimize(sc.substrate, [EventSurge(events=sc.events), EconomicLens()],
                    sc.horizon, dt=sc.dt)

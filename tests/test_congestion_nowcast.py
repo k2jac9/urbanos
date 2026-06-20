@@ -12,10 +12,10 @@ All offline: a tiny in-test count slice + injected providers, no network, no rea
 """
 import numpy as np
 
-from urban_os.adapters.toronto import downtown_scenario, downtown_substrate
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge
-from urban_os.lenses.congestion_nowcast import CongestionNowcastLens, _cosine
+from urbanos.kernel.adapters.toronto import downtown_scenario, downtown_substrate
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge
+from urbanos.kernel.lenses.congestion_nowcast import CongestionNowcastLens, _cosine
 
 
 def _run(sc, lens, release):
@@ -42,7 +42,7 @@ def test_nowcast_scores_when_given_observed_series():
     sc = downtown_scenario()
     # A synthetic-but-real-shaped observed series straight from the adapter fallback,
     # so the test needs no committed data.
-    from urban_os.adapters.toronto import observed_counts_by_node
+    from urbanos.kernel.adapters.toronto import observed_counts_by_node
 
     obs = observed_counts_by_node(sc.substrate, provider=lambda: [])
     lens = CongestionNowcastLens(obs)
@@ -67,7 +67,7 @@ def test_nowcast_does_not_perturb_kernel_or_other_lenses():
     """The lens is read-only on the crowd fields, so adding it must leave the kernel
     transport AND the economic terms byte-for-byte unchanged."""
     sc = downtown_scenario()
-    from urban_os.adapters.toronto import observed_counts_by_node
+    from urbanos.kernel.adapters.toronto import observed_counts_by_node
 
     obs = observed_counts_by_node(sc.substrate, provider=lambda: [])
     base = _run(sc, None, 0.0)
@@ -80,7 +80,7 @@ def test_nowcast_does_not_perturb_kernel_or_other_lenses():
 
 def test_nowcast_has_no_levers_and_no_cost():
     sc = downtown_scenario()
-    from urban_os.adapters.toronto import observed_counts_by_node
+    from urbanos.kernel.adapters.toronto import observed_counts_by_node
 
     obs = observed_counts_by_node(sc.substrate, provider=lambda: [])
     lens = CongestionNowcastLens(obs)
@@ -91,7 +91,7 @@ def test_nowcast_has_no_levers_and_no_cost():
 
 def test_nowcast_deterministic():
     sc = downtown_scenario()
-    from urban_os.adapters.toronto import observed_counts_by_node
+    from urbanos.kernel.adapters.toronto import observed_counts_by_node
 
     obs = observed_counts_by_node(sc.substrate, provider=lambda: [])
     a = CongestionNowcastLens(obs)
@@ -105,7 +105,7 @@ def test_nowcast_deterministic():
 def test_extra_display_lenses_grounds_nowcast_from_observed_data():
     """extra_display_lenses(sc) wires the nowcast lens with the REAL observed series;
     bare construction stays inert."""
-    from urban_os.scenarios import extra_display_lenses
+    from urbanos.kernel.scenarios import extra_display_lenses
 
     sc = downtown_scenario()
     grounded = next(l for l in extra_display_lenses(sc) if l.name == "congestion_nowcast")
@@ -122,7 +122,7 @@ def test_lenses_endpoint_exposes_calibration_without_moving_headline():
     headline and the four priced extras are unchanged."""
     from fastapi.testclient import TestClient
 
-    from urban_os.api import app
+    from urbanos.kernel.api import app
 
     client = TestClient(app)
     r = client.get("/lenses", params={"release_minutes": 8.0, "shelter_fraction": 0.5})
@@ -144,7 +144,7 @@ def test_observed_load_overlay_field_written():
     """The lens writes an advisory ``observed_load`` field (the aligned observed
     profile) for the map — distinct from the kernel-exact ``load``."""
     sc = downtown_substrate()
-    from urban_os.adapters.toronto import observed_counts_by_node
+    from urbanos.kernel.adapters.toronto import observed_counts_by_node
 
     obs = observed_counts_by_node(sc, provider=lambda: [])
     scen = downtown_scenario()

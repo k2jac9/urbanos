@@ -2,10 +2,10 @@
 LLM sentence that invents a number (the hallucination guard)."""
 from __future__ import annotations
 
-from urban_os.adapters import downtown_scenario
-from urban_os.lenses import EconomicLens, EventSurge, WeatherLens
-from urban_os.narrate import build_insight
-from urban_os.optimize import optimize
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.lenses import EconomicLens, EventSurge, WeatherLens
+from urbanos.kernel.narrate import build_insight
+from urbanos.kernel.optimize import optimize
 
 
 def _opt():

@@ -11,15 +11,15 @@ from pathlib import Path
 
 import numpy as np
 
-from civic_analyst.ingest import timeseries
-from urban_os.adapters import toronto
-from urban_os.adapters.toronto import (
+from urbanos.risk.ingest import timeseries
+from urbanos.kernel.adapters import toronto
+from urbanos.kernel.adapters.toronto import (
     TTC_BOARDINGS_PROVENANCE,
     downtown_substrate,
     ttc_boardings_by_node,
 )
-from urban_os.lenses import TransitLoadLens
-from urban_os.scenarios import default_lens_stack
+from urbanos.kernel.lenses import TransitLoadLens
+from urbanos.kernel.scenarios import default_lens_stack
 
 # A tiny injected slice: real-shaped {location, lat, lng, value} at two downtown stations.
 _UNION = {"location": "UNION", "lat": 43.6452, "lng": -79.3806, "value": 128655.0}

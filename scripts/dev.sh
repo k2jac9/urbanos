@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-command local dev stack for WSL/Linux: a live Ollama narrator + BOTH apps
-# (civic_analyst :8000, urban_os :8001) running in the background. This is the
+# (urbanos.risk :8000, urbanos.kernel :8001) running in the background. This is the
 # local-dev convenience the box doesn't need — on the GB10 the narrator is Nemotron
 # behind Ollama/TRT-LLM and the systemd services own the lifecycle (docs/ON_THE_BOX.md).
 #
@@ -86,8 +86,8 @@ wait_health() { # $1=port $2=label
 cmd_up() {
   log "python = $PY"
   if ollama_up; then ensure_model; fi
-  start_app civic  civic_analyst.api.server:app "$CIVIC_PORT" "DATA_DIR=demo_data"
-  start_app urban  urban_os.api:app             "$URBAN_PORT" ""
+  start_app civic  urbanos.risk.api.server:app "$CIVIC_PORT" "DATA_DIR=demo_data"
+  start_app urban  urbanos.kernel.api:app             "$URBAN_PORT" ""
   wait_health "$CIVIC_PORT" civic || true
   wait_health "$URBAN_PORT" urban || true
   log "narrator: $(curl -s "http://127.0.0.1:$CIVIC_PORT/health" | grep -oE '"interactive_model":"[^"]*"' || echo '?')"

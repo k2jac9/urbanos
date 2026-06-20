@@ -19,7 +19,7 @@ Get the demo surfaces live and warm **before** recording (see [`ON_THE_BOX.md`](
 and [`REMOTE_ACCESS.md`](../REMOTE_ACCESS.md)):
 
 - [ ] **Unified shell on `:8001`** running (the four-lens city canvas). Confirm `GET /health`.
-- [ ] **civic_analyst `:8000`** running for `/analyze` + click-to-verify.
+- [ ] **urbanos.risk `:8000`** running for `/analyze` + click-to-verify.
 - [ ] Demo pins resolve: **500 Bloor St W** (hero), **40 Bay St** (alt high-Activity).
 - [ ] `GET /optimize` returns the climax figures; **fill the numbers table** in VIDEO_SCRIPT
       from this exact surface.

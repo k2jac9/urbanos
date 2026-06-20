@@ -1,7 +1,7 @@
 """Discover City of Toronto open datasets (open.toronto.ca) from the terminal.
 
 So we *search the catalog* instead of guessing a single slug. Pairs with the
-hardened ``civic_analyst.ingest.ckan.CKANClient`` and ``download_data.py``.
+hardened ``urbanos.risk.ingest.ckan.CKANClient`` and ``download_data.py``.
 
     python scripts/catalog.py search "ttc ridership"     # find datasets by keyword
     python scripts/catalog.py show ttc-routes-and-schedules  # list a dataset's resources
@@ -20,7 +20,7 @@ from pathlib import Path
 # Allow running as a plain script without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from civic_analyst.ingest.ckan import CKANClient  # noqa: E402
+from urbanos.risk.ingest.ckan import CKANClient  # noqa: E402
 
 
 def _search(query: str, rows: int = 25) -> int:

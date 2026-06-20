@@ -21,7 +21,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from civic_analyst.graph.builder import normalize_address  # noqa: E402
+from urbanos.risk.graph.builder import normalize_address  # noqa: E402
 
 RAW = ROOT / "data" / "raw"
 OUT = ROOT / "demo_data"

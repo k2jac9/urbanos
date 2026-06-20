@@ -93,15 +93,15 @@ def main() -> int:
     ))
 
     # 1) nx-cugraph seam — building the scenario bakes the substrate shortest paths.
-    from urban_os.adapters import downtown_scenario
-    from urban_os.kernel import state as kstate
+    from urbanos.kernel.adapters import downtown_scenario
+    from urbanos.kernel.kernel import state as kstate
 
     sc = downtown_scenario()
     print(f"\n[graph]  substrate={sc.substrate.n} nodes  ->  GRAPH_BACKEND="
           f"{kstate.GRAPH_BACKEND}")
 
     # 2) cuDF/Polars seam — read a CSV through the ingest path.
-    from civic_analyst.ingest import loader
+    from urbanos.risk.ingest import loader
 
     csv = next(Path("demo_data").glob("*.csv"), None) or next(Path("fixtures").glob("*.csv"), None)
     if csv is not None:
@@ -112,16 +112,16 @@ def main() -> int:
         print("[ingest] no CSV found under demo_data/ or fixtures/ — skipped")
 
     # 3) cuOpt seam — optimal evacuation max-flow on the substrate.
-    from urban_os import flow
+    from urbanos.kernel import flow
     demands = {vid: crowd for vid, crowd, _ in sc.events}
     fr = flow.optimal_evacuation_flow(sc.substrate, demands, horizon=sc.horizon)
     print(f"[flow]   max_throughput={fr['max_throughput']} / demand={fr['demand']}  ->  "
           f"FLOW_BACKEND={flow.FLOW_BACKEND}")
 
     # 4) cuML seam — spatial risk-hotspot clustering of the civic addresses.
-    from civic_analyst import cluster
+    from urbanos.risk import cluster
     try:
-        from civic_analyst import mcp_server as civ
+        from urbanos.risk import mcp_server as civ
         civ.load()
         addrs = [a for a in civ.top_risk(limit=2000) if a.get("lat") is not None]
     except Exception:
@@ -131,7 +131,7 @@ def main() -> int:
           f"CLUSTER_BACKEND={cluster.CLUSTER_BACKEND}")
 
     # 5) PhysicsNeMo/Modulus surrogate seam (ADR-0027) — interface + exact-kernel ref.
-    from urban_os import surrogate
+    from urbanos.kernel import surrogate
     sur = surrogate.JSurrogate.load(["release_min"])  # any lever name; None unless trained
     print(f"[surrogate] enabled={surrogate.surrogate_enabled()} loaded={sur is not None}  ->  "
           f"SURROGATE_BACKEND={'physicsnemo' if sur is not None else 'none'} "

@@ -74,7 +74,7 @@ class Operators:
         slow-down a crowd actually feels is the economic lens's delay coupling.
         Sinks absorb without limit (into ``arrived``). People-conserving.
 
-        The step itself runs through :mod:`urban_os.kernel.accel`, which uses the
+        The step itself runs through :mod:`urbanos.kernel.kernel.accel`, which uses the
         compiled Rust core when built and a bit-for-bit numpy reference otherwise
         (ADR-0004). We keep the in-place field contract here — ``accel`` returns
         fresh arrays, the operator owns the write-back — because lenses and the

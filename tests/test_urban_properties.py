@@ -12,11 +12,11 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from urban_os.adapters.toronto import downtown_scenario
-from urban_os.kernel import Simulation, Substrate
-from urban_os.kernel.operators import Lens
-from urban_os.lenses import EconomicLens, EventSurge
-from urban_os.optimize import optimize
+from urbanos.kernel.adapters.toronto import downtown_scenario
+from urbanos.kernel.kernel import Simulation, Substrate
+from urbanos.kernel.kernel.operators import Lens
+from urbanos.kernel.lenses import EconomicLens, EventSurge
+from urbanos.kernel.optimize import optimize
 
 
 class _Seed(Lens):

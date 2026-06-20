@@ -9,7 +9,7 @@ Every tool validates its input at the boundary and degrades gracefully: when the
 model or a remote dataset is unavailable the tools return structured fallbacks
 rather than crashing the runtime (the demo is offline-first).
 
-Run (stdio transport):  python -m civic_analyst.mcp_server
+Run (stdio transport):  python -m urbanos.risk.mcp_server
 """
 from __future__ import annotations
 

@@ -23,11 +23,11 @@ import networkx as nx
 import numpy as np
 import pytest
 
-from urban_os.adapters import bikeshare_demand_by_node, downtown_scenario
-from urban_os.kernel import Simulation
-from urban_os.kernel.state import State, Substrate
-from urban_os.lenses import EconomicLens, EventSurge, MobilityDemandLens
-from urban_os.lenses.mobility_demand import PROVENANCE
+from urbanos.kernel.adapters import bikeshare_demand_by_node, downtown_scenario
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.kernel.state import State, Substrate
+from urbanos.kernel.lenses import EconomicLens, EventSurge, MobilityDemandLens
+from urbanos.kernel.lenses.mobility_demand import PROVENANCE
 
 
 # --- a tiny deterministic substrate -----------------------------------------
@@ -174,7 +174,7 @@ def test_extra_display_lenses_includes_mobility_and_stays_additive():
     """extra_display_lenses(sc) now includes the grounded MobilityDemand lens; bare
     construction stays synthetic, and the contract additivity test still holds for the
     full extra-lens set (none perturb the economic terms)."""
-    from urban_os.scenarios import extra_display_lenses
+    from urbanos.kernel.scenarios import extra_display_lenses
 
     sc = downtown_scenario()
     grounded = next(l for l in extra_display_lenses(sc) if l.name == "mobility_demand")
@@ -235,7 +235,7 @@ def test_bikeshare_demand_by_node_well_formed_synthetic_fallback():
 def test_bikeshare_demand_by_node_default_provider_is_offline_safe():
     """The DEFAULT provider path (no committed slice today) also yields a well-formed
     series via the synthetic fallback — proving the real-data wiring degrades cleanly."""
-    from urban_os.adapters.toronto import reset_bikeshare_demand_cache
+    from urbanos.kernel.adapters.toronto import reset_bikeshare_demand_cache
 
     reset_bikeshare_demand_cache()
     sc = downtown_scenario()

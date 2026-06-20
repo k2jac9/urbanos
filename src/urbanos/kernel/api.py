@@ -7,7 +7,7 @@ converted from numpy to native Python so it is JSON-serializable (numpy scalars
 are NOT JSON-serializable — converting at the boundary is the only safe place).
 
 Offline invariant: the page reuses the *already-vendored* MapLibre + PMTiles
-assets and the offline ``toronto.pmtiles`` basemap from the civic_analyst static
+assets and the offline ``toronto.pmtiles`` basemap from the urbanos.risk static
 dir — no CDN, no tile server. We mount that existing dir at ``/static`` so the
 UI loads everything from this origin.
 
@@ -32,19 +32,19 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from urban_os.adapters import downtown_scenario
-from urban_os.adapters.toronto import NODE_GROUPS
-from urban_os.kernel import Simulation
-from urban_os.narrate import build_insight
-from urban_os.optimize import cost_breakdown, optimize
-from urban_os.scenarios import default_lens_stack, extra_display_lenses as _extra_display_lenses
-from urban_os.serialize import (
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.adapters.toronto import NODE_GROUPS
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.narrate import build_insight
+from urbanos.kernel.optimize import cost_breakdown, optimize
+from urbanos.kernel.scenarios import default_lens_stack, extra_display_lenses as _extra_display_lenses
+from urbanos.kernel.serialize import (
     native as _native,
     peak_dict as _peak_dict,
     r as _r,
     simulate_frames as _simulate_frames,
 )
-from urban_os.services import (
+from urbanos.kernel.services import (
     BENEFIT_DEFINITIONS,
     calibration_report as _calibration_report,
     cross_domain_block as _cross_domain_block,
@@ -62,14 +62,16 @@ from urban_os.services import (
 # can reach /civic/addresses, /civic/analyze, /civic/health and /civic/ without a
 # second server/origin. Imported as a sub-app — see ``_load_civic_graph`` for the
 # lifespan caveat that makes its data actually load under this parent app.
-from civic_analyst.api.server import app as civic_app
-from civic_analyst.api import server as _civic_server
+from urbanos.risk.api.server import app as civic_app
+from urbanos.risk.api import server as _civic_server
 
 # Our own page + the proven offline assets (vendored MapLibre/PMTiles + basemap).
 _HERE = Path(__file__).parent
 _UI_DIR = _HERE / "static"
+# __file__ is src/urbanos/kernel/api.py → parents[1] is src/urbanos, so the sibling
+# risk subpackage's static dir is parents[1]/"risk"/"api"/"static" (ADR-0034 rename).
 _OFFLINE_ASSETS = (
-    Path(__file__).resolve().parents[1] / "civic_analyst" / "api" / "static"
+    Path(__file__).resolve().parents[1] / "risk" / "api" / "static"
 )
 
 
@@ -117,7 +119,7 @@ def _scenario():
 def _lenses(sc):
     """The optimizer/narrator stack (EventSurge + Economic + Weather).
 
-    Delegates to the shared :func:`urban_os.scenarios.default_lens_stack` so the
+    Delegates to the shared :func:`urbanos.kernel.scenarios.default_lens_stack` so the
     CLI and API can never run different stacks (ADR-0022). WeatherLens contributes
     the shelter-coverage optimizer lever and must follow Economic (ADR-0007)."""
     return default_lens_stack(sc, weather=True)
@@ -504,7 +506,7 @@ def flow_endpoint() -> dict:
     network can drain to its exits over the egress window (a max-flow LP; ADR-0025).
     The *theoretical ceiling* the staggered-release sim approaches. Solved by cuOpt on
     GPU when enabled (``URBANOS_GPU_FLOW=1``), else networkx max-flow on CPU."""
-    from urban_os.flow import optimal_evacuation_flow
+    from urbanos.kernel.flow import optimal_evacuation_flow
 
     sc = _scenario()
     demands = {vid: crowd for vid, crowd, _ in sc.events}

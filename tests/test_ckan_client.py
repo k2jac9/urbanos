@@ -7,7 +7,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from civic_analyst.ingest.ckan import CKANClient
+from urbanos.risk.ingest.ckan import CKANClient
 
 
 def _client(handler, **kw) -> CKANClient:

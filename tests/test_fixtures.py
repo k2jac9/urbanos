@@ -1,10 +1,10 @@
 """Guard the shipped synthetic fixtures so `make demo` always works."""
 from pathlib import Path
 
-from civic_analyst.agents.subagents import RiskNarratorAgent
-from civic_analyst.agents.supervisor import Supervisor
-from civic_analyst.graph.builder import CivicGraph
-from civic_analyst.ingest.loader import load_into_graph
+from urbanos.risk.agents.subagents import RiskNarratorAgent
+from urbanos.risk.agents.supervisor import Supervisor
+from urbanos.risk.graph.builder import CivicGraph
+from urbanos.risk.ingest.loader import load_into_graph
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 

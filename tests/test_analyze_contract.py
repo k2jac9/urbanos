@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from civic_analyst.config import settings
+from urbanos.risk.config import settings
 
 # The committed real downtown slice. We do NOT mutate settings.data_dir at import
 # time (that races with other modules' import-time assignments by collection order);
@@ -31,7 +31,7 @@ from civic_analyst.config import settings
 _DEMO = Path(__file__).resolve().parent.parent / "demo_data"
 _HAS_DEMO = _DEMO.is_dir() and any(_DEMO.glob("*.csv"))
 
-from civic_analyst.api.server import app  # noqa: E402
+from urbanos.risk.api.server import app  # noqa: E402
 
 HERO = "500 Bloor St W"  # the 3-dataset fusion pin (permits + failed inspection + licence)
 

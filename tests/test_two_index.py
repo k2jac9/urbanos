@@ -7,9 +7,9 @@ the digest's two-list split, and that no single blended score leaks anywhere.
 """
 import math
 
-import civic_analyst.agents.digest as digest
-from civic_analyst.agents.digest import _priorities, _safety, _activity, city_digest
-from civic_analyst.agents.verify import (
+import urbanos.risk.agents.digest as digest
+from urbanos.risk.agents.digest import _priorities, _safety, _activity, city_digest
+from urbanos.risk.agents.verify import (
     activity_index,
     risk_band,
     safety_index,

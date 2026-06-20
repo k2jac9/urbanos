@@ -1,8 +1,8 @@
 """The hallucination guard: claims must cite real source IDs and real numbers."""
 import json
 
-from civic_analyst.agents.subagents import Finding, RiskNarratorAgent
-from civic_analyst.agents.verify import (
+from urbanos.risk.agents.subagents import Finding, RiskNarratorAgent
+from urbanos.risk.agents.verify import (
     EVIDENCE_CAP,
     _BAND_HIGH,
     _BAND_LOW,

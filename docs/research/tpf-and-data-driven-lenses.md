@@ -119,7 +119,7 @@ reference) → TPF (if circulation/scale demands it)**.
 TPF's premise is "**density snapshots over time, never per-person paths**." That is precisely
 what the [City of Toronto Open Data Portal](https://open.toronto.ca/) provides, and what our
 current pipeline does **not** yet exploit (we use DineSafe + permits + licences, which are
-*static* address attributes — see `civic_analyst/ingest/datasets.py`). New, dynamic,
+*static* address attributes — see `urbanos/risk/ingest/datasets.py`). New, dynamic,
 marginal-shaped datasets:
 
 | Dataset | Shape | Why it's a TPF marginal |
@@ -138,7 +138,7 @@ from a static-attribute claim into a **dynamics-from-data** claim.
 
 ## 6. How it maps onto our kernel (grounded in the lens contract)
 
-Our lens contract (`src/urban_os/kernel/operators.py:104`):
+Our lens contract (`src/urbanos/kernel/kernel/operators.py:104`):
 
 ```python
 class Lens:
@@ -270,12 +270,12 @@ opt-in, advisory-only." Mirror the scope/honesty language of ADR-0027.
 - King Street Transit Pilot — Bluetooth travel-time + Miovision counts (City dashboards)
 
 **In-repo anchors**
-- Lens contract — `src/urban_os/kernel/operators.py:104` · Lever — `:24` ·
+- Lens contract — `src/urbanos/kernel/kernel/operators.py:104` · Lever — `:24` ·
   transport — `:64`
-- State/Substrate fields — `src/urban_os/kernel/state.py` · loop order + frames —
-  `src/urban_os/kernel/loop.py`
-- Existing surrogate seam (honesty template) — `src/urban_os/surrogate.py` · optimiser —
-  `src/urban_os/optimize.py`
-- Static civic ingest (what we have today) — `src/civic_analyst/ingest/datasets.py`,
+- State/Substrate fields — `src/urbanos/kernel/kernel/state.py` · loop order + frames —
+  `src/urbanos/kernel/kernel/loop.py`
+- Existing surrogate seam (honesty template) — `src/urbanos/kernel/surrogate.py` · optimiser —
+  `src/urbanos/kernel/optimize.py`
+- Static civic ingest (what we have today) — `src/urbanos/risk/ingest/datasets.py`,
   `loader.py`
 - Prior honesty/seam ADRs — `docs/adr/0024`, `0025`, `0027`

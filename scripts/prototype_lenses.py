@@ -9,14 +9,14 @@ economic objective term). Touches nothing in the live API.
 """
 from __future__ import annotations
 
-from urban_os.adapters.toronto import downtown_scenario
-from urban_os.scenarios import default_lens_stack
-from urban_os.kernel.loop import Simulation
+from urbanos.kernel.adapters.toronto import downtown_scenario
+from urbanos.kernel.scenarios import default_lens_stack
+from urbanos.kernel.kernel.loop import Simulation
 
-from urban_os.lenses.ems_access import EmsAccessLens
-from urban_os.lenses.emissions import EmissionsLens
-from urban_os.lenses.noise_livability import NoiseLivabilityLens
-from urban_os.lenses.fare_revenue import FareRevenueLens
+from urbanos.kernel.lenses.ems_access import EmsAccessLens
+from urbanos.kernel.lenses.emissions import EmissionsLens
+from urbanos.kernel.lenses.noise_livability import NoiseLivabilityLens
+from urbanos.kernel.lenses.fare_revenue import FareRevenueLens
 
 NEW = [EmsAccessLens(), EmissionsLens(), NoiseLivabilityLens(), FareRevenueLens()]
 

@@ -10,8 +10,8 @@ Mirrors the stubbed-LLM approach in tests/test_verify.py — never hits a model.
 """
 import json
 
-from civic_analyst.agents.subagents import Finding, RiskNarratorAgent
-from civic_analyst.agents.verify import (
+from urbanos.risk.agents.subagents import Finding, RiskNarratorAgent
+from urbanos.risk.agents.verify import (
     deterministic_claims,
     evidence_index,
     resolve_claims,

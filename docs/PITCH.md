@@ -116,7 +116,7 @@ the pitch never drifts from the live demo):
 | Lever | **14-min** staggered release → **−67% peak** |
 | Net intervention benefit | **~$218k** (J $323k → $105k) |
 
-**B. Full cross-domain — `PYTHONPATH=src python -m urban_os.cli --safety --business`**
+**B. Full cross-domain — `PYTHONPATH=src python -m urbanos.kernel.cli --safety --business`**
 | | value |
 |---|---|
 | Net intervention benefit | **~$281k** (J $388k → $107k) |
@@ -139,7 +139,7 @@ event, is the **operations** side of offsetting the Fan Festival's **$6.2M defic
 Reproduce:
 ```bash
 make urbanos-cli                                            # A — transit egress insight (2-lens)
-PYTHONPATH=src python -m urban_os.cli --safety --business   # B — full cross-domain (4 lenses)
+PYTHONPATH=src python -m urbanos.kernel.cli --safety --business   # B — full cross-domain (4 lenses)
 # C — the live-UI optimum (3-lens with weather/shelter):
-PYTHONPATH=src python -c "from fastapi.testclient import TestClient; from urban_os.api import app; import json; print(json.dumps(TestClient(app).get('/optimize').json()['figures'], indent=2))"
+PYTHONPATH=src python -c "from fastapi.testclient import TestClient; from urbanos.kernel.api import app; import json; print(json.dumps(TestClient(app).get('/optimize').json()['figures'], indent=2))"
 ```

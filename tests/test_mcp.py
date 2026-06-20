@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from civic_analyst import mcp_server
-from civic_analyst.graph.builder import normalize_address
+from urbanos.risk import mcp_server
+from urbanos.risk.graph.builder import normalize_address
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 

@@ -7,11 +7,11 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from urban_os.adapters.toronto import bikeshare_demand_by_node, downtown_scenario
-from urban_os.api import app
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge, MobilityDemandLens
-from urban_os.services import mobility_demand_report
+from urbanos.kernel.adapters.toronto import bikeshare_demand_by_node, downtown_scenario
+from urbanos.kernel.api import app
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge, MobilityDemandLens
+from urbanos.kernel.services import mobility_demand_report
 
 
 def _run(stack, sc):

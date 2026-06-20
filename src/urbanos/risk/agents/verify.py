@@ -37,7 +37,7 @@ _W_SEVERE_VISIT = 1.0
 # Shared risk-band cutoffs (ADR 0014). A score in [0, _BAND_LOW) reads "low",
 # [_BAND_LOW, _BAND_HIGH) "medium", and >= _BAND_HIGH "high" (0 is "none"). These are
 # the SINGLE documented source for the bands: the map's pin colors in
-# src/civic_analyst/api/static/map.html (the `bandOf` helper and the circle-color
+# src/urbanos/risk/api/static/map.html (the `bandOf` helper and the circle-color
 # `step` stops) MUST mirror these exact cutoffs — update both together.
 _BAND_LOW = 0.34
 _BAND_HIGH = 0.67
@@ -195,7 +195,7 @@ def evidence_index(
 
 # ADR-0020: a "number" is an integer OR a decimal (optionally with a fractional
 # part). We keep decimals intact (``2.5``) rather than splitting them into ``{2, 5}``
-# — the digit-run flaw ADR-0010 fixed in urban_os/narrate, now back-ported here so a
+# — the digit-run flaw ADR-0010 fixed in urbanos/kernel/narrate, now back-ported here so a
 # claim like "risk rose 2.5x" can't smuggle ``2.5`` past a whitelist of ``{2, 5}``.
 _NUM_RE = re.compile(r"\d+(?:\.\d+)?")
 

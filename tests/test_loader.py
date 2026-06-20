@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from civic_analyst.graph.builder import CivicGraph
-from civic_analyst.ingest.loader import load_into_graph
+from urbanos.risk.graph.builder import CivicGraph
+from urbanos.risk.ingest.loader import load_into_graph
 
 # Repo-root demo_data slice (tests live in <repo>/tests/).
 _DEMO_DATA = Path(__file__).resolve().parent.parent / "demo_data"
@@ -162,7 +162,7 @@ def test_malformed_file_is_skipped_not_fatal(tmp_path: Path):
 def test_malformed_file_is_logged_loudly(tmp_path: Path, caplog):
     # A corrupt slice must be VISIBLE in logs (not a silent "low risk everywhere").
     (tmp_path / "licences__broken.json").write_text("{ this is not valid json ")
-    with caplog.at_level("WARNING", logger="civic_analyst.ingest.loader"):
+    with caplog.at_level("WARNING", logger="urbanos.risk.ingest.loader"):
         load_into_graph(CivicGraph(), tmp_path)
     assert any(
         "skipping" in r.message and "licences__broken.json" in r.getMessage()
@@ -283,7 +283,7 @@ def test_conviction_outcome_escalates_visit_to_severe(tmp_path: Path):
         2,77 Bay St,Conditional Pass,2024-02-01,
         """,
     )
-    from civic_analyst.agents.verify import classify_inspection
+    from urbanos.risk.agents.verify import classify_inspection
 
     graph = CivicGraph()
     load_into_graph(graph, tmp_path)

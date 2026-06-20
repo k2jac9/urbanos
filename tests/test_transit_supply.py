@@ -10,13 +10,13 @@ from pathlib import Path
 import numpy as np
 from fastapi.testclient import TestClient
 
-from civic_analyst.ingest import timeseries
-from urban_os.adapters.toronto import (
+from urbanos.risk.ingest import timeseries
+from urbanos.kernel.adapters.toronto import (
     TRANSIT_SUPPLY_PROVENANCE,
     downtown_substrate,
     transit_supply_by_node,
 )
-from urban_os.api import app
+from urbanos.kernel.api import app
 
 _NEAR_UNION = {"location": "stop_a", "lat": 43.6452, "lng": -79.3806, "value": 300.0}
 _NEAR_ST_PATRICK = {"location": "stop_b", "lat": 43.6549, "lng": -79.3884, "value": 40.0}

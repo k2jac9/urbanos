@@ -65,7 +65,7 @@ City of Toronto Open Data (CKAN)  ──►  City adapter (adapters/toronto.py)
   TTC GTFS · traffic volumes · event permits        builds the road/transit substrate
         │                                            (offline-deterministic synthetic
         ▼                                             downtown; real GTFS on the GX10)
-   KERNEL  (urban_os/kernel)                          numpy fields over a networkx graph
+   KERNEL  (urbanos/kernel/kernel)                          numpy fields over a networkx graph
    ┌─ source ─ transport ─ couple ─ observe ─┐  ◄── transport runs on a Rust core
    │   time loop: integrate at N× real-time   │       (drop-in; numpy fallback, ADR-0004)
    └──────────────────────────────────────────┘
@@ -95,12 +95,12 @@ the tiny demo substrate — same as the Rust accelerator (ADR-0009).
   `collect(engine="gpu")` runs on **cuDF**; enabled by `URBANOS_GPU_DF=1`. Falls back to
   Polars-CPU, then pandas. Drop-in: identical rows, golden numbers unchanged.
 - **cuOpt (RAPIDS)** — solves the **optimal evacuation max-flow** on the capacitated
-  substrate (`GET /flow`, `urban_os/flow.py`): the theoretical ceiling the staggered
+  substrate (`GET /flow`, `urbanos/kernel/flow.py`): the theoretical ceiling the staggered
   -release sim approaches. A real LP (cuOpt's wheelhouse) — *not* the lever search
   (cuOpt can't evaluate the black-box sim). `URBANOS_GPU_FLOW=1`; networkx max-flow CPU
   fallback. Verified on the GB10.
 - **cuML (RAPIDS)** — clusters the scored civic addresses into **spatial risk hotspots**
-  (`GET /clusters`, `civic_analyst/cluster.py`) via GPU KMeans. `URBANOS_GPU_CLUSTER=1`;
+  (`GET /clusters`, `urbanos/risk/cluster.py`) via GPU KMeans. `URBANOS_GPU_CLUSTER=1`;
   deterministic numpy KMeans CPU fallback.
 - **TensorRT-LLM** — the narrator client is runtime-agnostic (OpenAI-compatible HTTP), so
   serving Nemotron behind `trtllm-serve` is a *config* swap: `LLM_RUNTIME=tensorrt-llm` +
@@ -110,7 +110,7 @@ the tiny demo substrate — same as the Rust accelerator (ADR-0009).
   ADR-0027); a throughput-under-load win is unproven (next-step). Falls back to Ollama / the
   deterministic narrator. (ADR-0027)
 - **PhysicsNeMo (Modulus)** — a neural **surrogate of the optimizer objective `J(levers)`**
-  for *city-scale* search (`urban_os/surrogate.py`, `URBANOS_SURROGATE=1`). Shipped as an
+  for *city-scale* search (`urbanos/kernel/surrogate.py`, `URBANOS_SURROGATE=1`). Shipped as an
   **interface only**: the exact kernel still decides every result (the surrogate's
   prediction is recorded alongside, never used to choose); a trained checkpoint is the
   documented next step. Default off → identical to the grid optimizer. (ADR-0027)
@@ -174,7 +174,7 @@ cp .env.example .env            # point LLM_BASE_URL at your local Ollama/NIM en
 python scripts/download_data.py # pre-fetch datasets (do this BEFORE the venue!)
 make serve                      # FastAPI on :8000  → GET /analyze?address=...
 # or
-python -m civic_analyst.cli analyze "100 Queen St W"
+python -m urbanos.risk.cli analyze "100 Queen St W"
 ```
 
 ## Instant demo
@@ -225,7 +225,7 @@ The datasets and risk engine are exposed as MCP tools (`list_datasets`,
 `dataset_resources`, `analyze_address`, `top_risk`) so a local agent runtime can
 call them — the pattern the NYC winner used:
 ```bash
-python -m civic_analyst.mcp_server      # stdio MCP server
+python -m urbanos.risk.mcp_server      # stdio MCP server
 ```
 On the GX10, point **NemoClaw** (running Nemotron locally via OpenShell) at
 `config/nemoclaw.mcp.json` so the agent answers civic-risk questions through our

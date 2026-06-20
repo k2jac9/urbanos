@@ -1,6 +1,6 @@
 """ADR-0023: the two apps are decoupled through public seams, not private globals.
 
-- civic_analyst exposes ``load_graph`` / ``ensure_loaded`` so a parent app can load
+- urbanos.risk exposes ``load_graph`` / ``ensure_loaded`` so a parent app can load
   the graph without reaching into its module internals.
 - ``civic_safety_by_node`` takes an injectable ``address_provider`` so the Toronto
   adapter no longer hard-depends on civic internals and is testable in isolation.
@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import math
 
-from urban_os.adapters import downtown_scenario
-from urban_os.adapters.toronto import civic_safety_by_node, reset_civic_address_cache
+from urbanos.kernel.adapters import downtown_scenario
+from urbanos.kernel.adapters.toronto import civic_safety_by_node, reset_civic_address_cache
 
 
 def test_civic_exposes_public_load_entrypoints():
-    from civic_analyst.api import server
+    from urbanos.risk.api import server
 
     assert callable(server.load_graph)
     assert callable(server.ensure_loaded)

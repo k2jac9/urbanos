@@ -12,7 +12,7 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
-from civic_analyst.api.server import app
+from urbanos.risk.api.server import app
 
 client = TestClient(app)
 

@@ -1,6 +1,6 @@
-from civic_analyst.agents.subagents import RiskNarratorAgent
-from civic_analyst.agents.supervisor import Supervisor
-from civic_analyst.graph.builder import CivicGraph
+from urbanos.risk.agents.subagents import RiskNarratorAgent
+from urbanos.risk.agents.supervisor import Supervisor
+from urbanos.risk.graph.builder import CivicGraph
 
 
 class _StubNarrator(RiskNarratorAgent):

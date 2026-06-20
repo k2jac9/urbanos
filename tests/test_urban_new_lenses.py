@@ -8,13 +8,13 @@ deterministic.
 """
 import numpy as np
 
-from urban_os.adapters.toronto import downtown_scenario
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge
-from urban_os.lenses.ems_access import EmsAccessLens, VALUE_OF_EMS_DELAY
-from urban_os.lenses.emissions import EmissionsLens, SOCIAL_COST_PER_KG
-from urban_os.lenses.noise_livability import NoiseLivabilityLens, VALUE_OF_QUIET
-from urban_os.lenses.fare_revenue import FareRevenueLens, FARE, ABANDON_FRACTION
+from urbanos.kernel.adapters.toronto import downtown_scenario
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge
+from urbanos.kernel.lenses.ems_access import EmsAccessLens, VALUE_OF_EMS_DELAY
+from urbanos.kernel.lenses.emissions import EmissionsLens, SOCIAL_COST_PER_KG
+from urbanos.kernel.lenses.noise_livability import NoiseLivabilityLens, VALUE_OF_QUIET
+from urbanos.kernel.lenses.fare_revenue import FareRevenueLens, FARE, ABANDON_FRACTION
 
 
 def _run(sc, lens, release):
@@ -110,9 +110,9 @@ def test_lenses_endpoint_exposes_extra_lenses_without_moving_headline():
     extras ride along in the sims but are excluded from J."""
     from fastapi.testclient import TestClient
 
-    from urban_os.api import app
-    from urban_os.kernel import Simulation
-    from urban_os.services import four_lens_J, four_lens_stack
+    from urbanos.kernel.api import app
+    from urbanos.kernel.kernel import Simulation
+    from urbanos.kernel.services import four_lens_J, four_lens_stack
 
     client = TestClient(app)
     r = client.get("/lenses", params={"release_minutes": 8.0, "shelter_fraction": 0.5})
@@ -139,8 +139,8 @@ def test_lenses_endpoint_exposes_extra_lenses_without_moving_headline():
 def test_civic_activity_overlay_well_formed():
     """The adapter's Activity-index → node-field fusion yields one bounded value per
     node (mirrors the civic-safety fusion contract)."""
-    from urban_os.adapters import civic_activity_by_node
-    from urban_os.adapters.toronto import downtown_substrate
+    from urbanos.kernel.adapters import civic_activity_by_node
+    from urbanos.kernel.adapters.toronto import downtown_substrate
 
     sub = downtown_substrate()
     overlay = civic_activity_by_node(sub)
@@ -151,7 +151,7 @@ def test_civic_activity_overlay_well_formed():
 def test_extra_display_lenses_grounds_noise_from_real_data():
     """extra_display_lenses(sc) grounds NoiseLivabilityLens in the real Activity
     overlay; bare construction stays synthetic."""
-    from urban_os.scenarios import extra_display_lenses
+    from urbanos.kernel.scenarios import extra_display_lenses
 
     sc = downtown_scenario()
     grounded = next(l for l in extra_display_lenses(sc) if l.name == "noise_livability")
@@ -165,7 +165,7 @@ def test_extra_display_lenses_grounds_noise_from_real_data():
 def test_overlays_endpoint_returns_normalized_node_fields():
     from fastapi.testclient import TestClient
 
-    from urban_os.api import app
+    from urbanos.kernel.api import app
 
     client = TestClient(app)
     r = client.get("/overlays")

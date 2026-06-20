@@ -7,10 +7,10 @@ adapter's civic→node fusion produces a well-formed overlay.
 """
 import numpy as np
 
-from urban_os.adapters import civic_safety_by_node, downtown_scenario
-from urban_os.adapters.toronto import downtown_substrate
-from urban_os.kernel import Simulation
-from urban_os.lenses import EconomicLens, EventSurge, SafetyLens
+from urbanos.kernel.adapters import civic_safety_by_node, downtown_scenario
+from urbanos.kernel.adapters.toronto import downtown_substrate
+from urbanos.kernel.kernel import Simulation
+from urbanos.kernel.lenses import EconomicLens, EventSurge, SafetyLens
 
 # Union is the engineered bottleneck — give its district the civic safety risk.
 NODE_RISK = {"union": 1.0, "king": 0.4, "queen": 0.4}
@@ -53,7 +53,7 @@ def test_cost_scales_with_value_constant():
     sc = downtown_scenario()
     sl = SafetyLens(NODE_RISK)
     res = _run(sc, 0.0)
-    from urban_os.lenses.safety import VALUE_OF_CIVIC_SAFETY
+    from urbanos.kernel.lenses.safety import VALUE_OF_CIVIC_SAFETY
     assert np.isclose(sl.cost(res), VALUE_OF_CIVIC_SAFETY * sum(res.series("civic_exposure")))
 
 

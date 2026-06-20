@@ -18,7 +18,7 @@ model:
     *exact* kernel ``J``; the surrogate's prediction is recorded alongside (for
     transparency / to show accuracy), so an approximate number can never reach the UI.
   * Default OFF (``URBANOS_SURROGATE`` unset) → behaviour byte-identical to grid; the
-    golden urban_os numbers and CI are untouched.
+    golden urbanos.kernel numbers and CI are untouched.
   * Enabled but no PhysicsNeMo / no checkpoint → ``load()`` returns False, backend
     stays ``"none"``, still identical to grid. Training a real checkpoint is the
     documented next step (ADR-0027), deliberately not faked here.

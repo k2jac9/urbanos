@@ -1,4 +1,4 @@
-"""Behavior-pinning table for civic_analyst.graph.builder.normalize_address.
+"""Behavior-pinning table for urbanos.risk.graph.builder.normalize_address.
 
 This is a characterization test: it asserts the function's ACTUAL current
 behavior (not a desired-but-absent ideal) so a future refactor can't silently
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from civic_analyst.graph.builder import normalize_address
+from urbanos.risk.graph.builder import normalize_address
 
 CASES = [
     # --- street-type abbreviations (long spelling folds to canonical short) ---

@@ -1,7 +1,7 @@
 """Domain lenses — portable across city adapters.
 
 A lens plugs domain behaviour into the kernel through the four-operator contract
-(see ``urban_os.kernel.operators.Lens``). P0 ships two, plus a third domain lens:
+(see ``urbanos.kernel.kernel.operators.Lens``). P0 ships two, plus a third domain lens:
 
 - :class:`EventSurge` — an event's egress wave (a ``source``) with a
   staggered-release ``lever`` the optimizer can tune.

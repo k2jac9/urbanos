@@ -748,6 +748,10 @@
               // ADR-0026: keep the dollars honest — they are calibrated, illustrative.
               '<p class="illus">Figures are calibrated, illustrative — the shape is the claim.</p></div>'+
           '<div class="row"><button class="act" id="opt">✨ Find the best intervention</button></div>'+
+          // The optimizer's grounded insight + congestion before/after lands here (was
+          // Flow-only). In City the combined headline above is already driven by
+          // runOptimize, so this card omits its own combined block to avoid a duplicate.
+          '<div id="opt-out"></div>'+
           // ADR-0026 Phase 2: the cuOpt optimal-evacuation ceiling — frames the crush as
           // a TIMING problem (the network CAN clear everyone over the window), which is
           // exactly what the staggered-release lever fixes.
@@ -1029,16 +1033,20 @@
       const jAvoided = (d.j_avoided != null) ? d.j_avoided : d.savings;
       // The before/after + grounded insight card.
       const out = document.getElementById('opt-out');
-      const card =
-        '<div class="insight"><span class="tag '+(d.grounded?'grounded">✓ grounded':'fallback">⚠ template')+'</span><br>'+esc(d.insight)+'</div>'+
-        '<div class="ba"><div class="card"><div class="k">Do nothing</div><div class="v bad">'+mult2(d.baseline_peak.congestion)+'×</div><div class="hint">'+esc(d.baseline_peak.label)+'</div></div>'+
-        '<div class="card"><div class="k">Best ('+relMin+'m · '+Math.round(shelFrac*100)+'%)</div><div class="v good">'+mult2(d.best_peak.congestion)+'×</div><div class="hint">'+esc(d.best_peak.label)+'</div></div></div>'+
+      // City already shows the combined headline (updated below), so don't repeat the
+      // combined block there — only Flow, which has no separate headline, carries it.
+      const combinedBlock = (LENS === 'city') ? '' :
         // F-4: label both benefit framings with their ADR-0019 definitions (tooltips)
         // so the same intervention no longer shows unexplained dollar figures.
         '<div class="combined"><div class="k">Combined benefit — one objective, every lens</div>'+
           '<div class="v num" title="'+benefitTip('cross_domain_benefit')+'">'+dK(combined)+'</div>'+
           '<div class="optband" style="margin-top:6px"><span title="'+benefitTip('cross_domain_benefit')+'">cross-domain (additive)</span> · '+
-          'net benefit <b class="num" title="'+benefitTip('j_avoided')+'">'+dK(jAvoided)+'</b></div></div>'+
+          'net benefit <b class="num" title="'+benefitTip('j_avoided')+'">'+dK(jAvoided)+'</b></div></div>';
+      const card =
+        '<div class="insight"><span class="tag '+(d.grounded?'grounded">✓ grounded':'fallback">⚠ template')+'</span><br>'+esc(d.insight)+'</div>'+
+        '<div class="ba"><div class="card"><div class="k">Do nothing</div><div class="v bad">'+mult2(d.baseline_peak.congestion)+'×</div><div class="hint">'+esc(d.baseline_peak.label)+'</div></div>'+
+        '<div class="card"><div class="k">Best ('+relMin+'m · '+Math.round(shelFrac*100)+'%)</div><div class="v good">'+mult2(d.best_peak.congestion)+'×</div><div class="hint">'+esc(d.best_peak.label)+'</div></div></div>'+
+        combinedBlock +
         // Advisory blocks read from the /lenses result `l` (the /optimize response `d`
         // doesn't carry them). Each returns '' when unavailable, so the default view is
         // unchanged: learned-dynamics floor (ADR-0028, on only with URBANOS_LEARNED_DYNAMICS)

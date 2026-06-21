@@ -11,7 +11,7 @@ python -m venv .venv && . .venv/bin/activate
 make install && make install-hooks      # deps + pre-push test gate
 cp .env.example .env
 ```
-Then confirm with `make test` (expect **584 green**) and tell them `make demo` opens the
+Then confirm with `make test` (expect **684 green / 1 skipped**) and tell them `make demo` opens the
 offline map at http://localhost:8000/ (and `make urbanos` the simulation UI at :8001). Point
 them at the workflow + "Current status" below.
 
@@ -72,7 +72,7 @@ Layout: `src/urbanos/risk/{ingest,graph,agents,api}`, `src/urbanos/kernel/`, `te
 > reviewed PRs, and the data-driven lenses are grounded in real Toronto open data
 > (Bike Share #105, TTC boardings #107, GTFS transit supply #108) reachable through a hardened
 > CKAN client + `scripts/catalog.py` (#106). The "demo"/"hackathon" framing in the ADRs, the
-> pitch, and the video kit is preserved as honest origin history. **Suite: 584 green / 1 skipped.**
+> pitch, and the video kit is preserved as honest origin history. **Suite: 684 green / 1 skipped.**
 
 > **Data-driven roadmap update (2026-06-20).** The roadmap
 > (`docs/research/tpf-and-data-driven-lenses.md`) is shipping phase-by-phase — every step
@@ -117,10 +117,21 @@ Layout: `src/urbanos/risk/{ingest,graph,agents,api}`, `src/urbanos/kernel/`, `te
 > `/civic/?embed=1` iframe — briefing + Presentation 3D + analyze/verify inline). Visual/integration
 > only; golden numbers + offline map + guard unchanged.
 
+> **More Fit C intelligence lenses + offline geo engine (2026-06-20, ADR-0036→0041).** Six more
+> real-data, **display-only advisory** lenses on the MobilityDemand template (no lever, no `J` term,
+> excluded from optimization — each a map-heat overlay + an advisory card on the optimize result):
+> **RoadRisk** (ADR-0036, #123 — Vision Zero / KSI collision history, 2,036 real geocoded records in
+> `demo_data/ksi__downtown.csv`) · **Footfall** (0037) + **Road disruption** (0038, #124) ·
+> **Enforcement** (0039) + **Bike-theft** (0040) + **Emergency** (0041, #125 — TFS fire/EMS density).
+> All coord-bearing and offline-safe (network fail → synthetic deterministic field). Plus **#126**: an
+> **offline geo-resolution engine + gazetteers** (PR1, no lens yet — groundwork for resolving more
+> datasets onto the substrate). Visual/additive only; **golden numbers, the offline map, and the
+> hallucination guard are unchanged.** **Suite: 684 passed / 1 skipped (685 collected).**
+
 **Context & origin docs:** `docs/ON_THE_BOX.md` (box runbook, operational), `docs/HANDOFF.md`,
 `docs/PITCH.md`, `docs/video/` — the last three are **origin/hackathon artifacts**, kept as
 honest history (not maintained as current product docs). A fresh clone builds + passes all
-tests (`make test` ≈ **584 green**). Everything below is **merged on `main` + CI-green**, and
+tests (`make test` ≈ **684 green / 1 skipped**). Everything below is **merged on `main` + CI-green**, and
 the **original GPU deployment remains live** (see "GPU stack" below).
 
 **The project is two apps that share one architecture:**
